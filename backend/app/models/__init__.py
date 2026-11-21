@@ -16,6 +16,7 @@ from app.models.notificacao import Notificacao
 from app.models.prazo import Prazo
 from app.models.processo import Processo
 from app.models.usuario import Usuario
+from app.models.whatsapp import MensagemWhatsapp
 
 __all__ = [
     "Usuario",
@@ -34,4 +35,5 @@ __all__ = [
     "Embedding",
     "Reuniao",
     "Mensagem",
+    "MensagemWhatsapp",
 ]

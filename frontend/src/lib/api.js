@@ -63,6 +63,36 @@ export async function api(path, { method = "GET", body, sensitive, retry = true 
   return resp.json();
 }
 
+// --- Token sensível (financeiro / dashboard dono) ---
+export function getSensitiveToken() {
+  const raw = sessionStorage.getItem("sensitive");
+  if (!raw) return null;
+  try {
+    const { token, exp } = JSON.parse(raw);
+    if (Date.now() > exp) {
+      sessionStorage.removeItem("sensitive");
+      return null;
+    }
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+export function setSensitiveToken(token) {
+  // validade ~30min (alinhada ao backend)
+  sessionStorage.setItem("sensitive", JSON.stringify({ token, exp: Date.now() + 29 * 60 * 1000 }));
+}
+
+export async function desbloquearSensivel(senha) {
+  const data = await api("/api/auth/verify-sensitive", {
+    method: "POST",
+    body: { senha_sensivel: senha },
+  });
+  setSensitiveToken(data.sensitive_token);
+  return data.sensitive_token;
+}
+
 export function wsUrl() {
   const { access } = getTokens();
   const base = API_URL.replace(/^http/, "ws");

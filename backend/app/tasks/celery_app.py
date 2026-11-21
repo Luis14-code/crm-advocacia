@@ -12,6 +12,7 @@ celery_app = Celery(
         "app.tasks.sync_tasks",
         "app.tasks.briefing_tasks",
         "app.tasks.transcricao_tasks",
+        "app.tasks.whatsapp_tasks",
     ],
 )
 

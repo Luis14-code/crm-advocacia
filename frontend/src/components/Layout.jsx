@@ -10,6 +10,8 @@ const MENU = [
   { to: "/prazos", label: "Prazos", icon: "⏰", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/reunioes", label: "Reuniões", icon: "🎙️", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/pecas", label: "Peças", icon: "📄", perfis: ["socio", "advogado", "estagiario"] },
+  { to: "/whatsapp", label: "WhatsApp", icon: "📱", perfis: ["socio", "advogado", "financeiro"] },
+  { to: "/financeiro", label: "Financeiro", icon: "💰", perfis: ["socio", "financeiro"] },
   { to: "/configuracoes", label: "Configurações", icon: "⚙️", perfis: ["socio"] },
 ];
 

@@ -161,6 +161,23 @@ async def sincronizar_processo(
                     )
                 )
 
+    # Gatilho WhatsApp (human-in-the-loop): 1 mensagem pendente por processo com
+    # movimentação nova, se o cliente tiver telefone e não tiver opt-out.
+    if novas and processo.cliente_id:
+        from app.models.cliente import Cliente
+        from app.services import whatsapp as wsvc
+
+        cliente = await db.get(Cliente, processo.cliente_id)
+        if cliente:
+            texto = wsvc.render_template(
+                "movimentacao",
+                {"nome": cliente.nome.split()[0], "processo": processo.numero},
+            )
+            await wsvc.criar_pendente(
+                db, cliente, texto, gatilho="movimentacao",
+                usuario_id=processo.advogado_id, processo_id=processo.id,
+            )
+
     resultado["novas"] = novas
     resultado["prazos"] = prazos_criados
     return resultado

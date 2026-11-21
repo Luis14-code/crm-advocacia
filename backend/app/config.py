@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     upload_dir: str = "/app/uploads"
     max_upload_mb: int = 200
 
+    # Financeiro
+    iss_percentual: float = 5.0        # ISS sobre honorários
+    honorarios_padrao: float = 30.0    # % contratual padrão quando não há config
+
+    # WhatsApp (WA-AKG) — anti-ban
+    whatsapp_envio_inicio: int = 8     # janela de envio (hora)
+    whatsapp_envio_fim: int = 20
+    whatsapp_max_por_hora: int = 20
+    whatsapp_intervalo_min_seg: int = 45  # intervalo mínimo entre envios
+
     # Celery
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/0"

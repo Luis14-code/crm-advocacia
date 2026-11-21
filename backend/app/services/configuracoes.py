@@ -16,9 +16,12 @@ from app.models.configuracao import Configuracao
 # Chaves conhecidas
 DATAJUD_API_KEY = "datajud_api_key"
 JUSBRASIL_DEFAULT_TOKEN = "jusbrasil_default_token"
+WAAKG_BASE_URL = "waakg_base_url"
+WAAKG_API_KEY = "waakg_api_key"
+WAAKG_SESSION_ID = "waakg_session_id"
 
 # Metadados das chaves expostas na UI (quais são secretas)
-CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN}
+CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN, WAAKG_API_KEY}
 
 
 async def obter(db: AsyncSession, chave: str) -> str | None:
@@ -70,3 +73,13 @@ async def get_datajud_api_key(db: AsyncSession) -> tuple[str, str]:
 
 async def get_jusbrasil_default_token(db: AsyncSession) -> str | None:
     return await obter(db, JUSBRASIL_DEFAULT_TOKEN)
+
+
+async def get_waakg_config(db: AsyncSession) -> dict:
+    """Configuração do gateway WA-AKG (base_url, api_key, session_id)."""
+    base = await obter(db, WAAKG_BASE_URL)
+    return {
+        "base_url": (base or "http://wa-akg:3000").rstrip("/"),
+        "api_key": await obter(db, WAAKG_API_KEY),
+        "session_id": await obter(db, WAAKG_SESSION_ID) or "claudio",
+    }

@@ -50,6 +50,16 @@ def _roteamento_heuristico(mensagem: str) -> tuple[str, dict] | None:
         return "consultar_reuniao", {"pergunta": mensagem}
     if any(t in m for t in ["transcri", "reunião", "reuniao", "gravação", "gravacao"]):
         return "transcrever_reuniao", {}
+    # WhatsApp
+    if any(t in m for t in ["whatsapp", "zap", "mensagem para o cliente", "avisar o cliente", "mandar mensagem"]):
+        return "enviar_whatsapp", {}
+    # Financeiro
+    if any(t in m for t in ["acordo", "simular acordo", "simula"]):
+        return "calcular_acordo", {}
+    if any(t in m for t in ["boleto", "cobrança", "cobranca"]):
+        return "gerar_boleto", {}
+    if any(t in m for t in ["relatório financeiro", "relatorio financeiro", "faturamento", "fluxo de caixa", "caixa"]):
+        return "relatorio_financeiro", {}
     if any(t in m for t in ["tese", "teses", "estratégia", "estrategia", "argumento"]):
         return "sugerir_tese", {}
     if achado:

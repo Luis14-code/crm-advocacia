@@ -155,15 +155,37 @@ services:
       - "127.0.0.1:11434:11434"
     profiles: [llm]
 
-  waha:
-    image: devlikeapro/waha:latest
+  # Gateway WhatsApp não-oficial (Baileys) — https://github.com/mrifqidaffaaditya/WA-AKG (MIT)
+  wa-akg:
+    build:
+      context: https://github.com/mrifqidaffaaditya/WA-AKG.git#main
     restart: unless-stopped
     environment:
-      WAHA_API_KEY: ${WAHA_API_KEY:-}
-      WHATSAPP_HOOK_URL: ${WAHA_WEBHOOK_URL:-}
-      WHATSAPP_HOOK_EVENTS: message
+      DATABASE_URL: postgresql://waakg:${WAAKG_DB_PASSWORD:-waakg}@waakg-db:5432/waakg
+      AUTH_SECRET: ${WAAKG_AUTH_SECRET:-troque-este-segredo}
+      PORT: "3000"
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      waakg-db:
+        condition: service_healthy
+    profiles: [whatsapp]
+
+  waakg-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: waakg
+      POSTGRES_USER: waakg
+      POSTGRES_PASSWORD: ${WAAKG_DB_PASSWORD:-waakg}
     volumes:
-      - wahadata:/app/.sessions
+      - waakgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waakg"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     profiles: [whatsapp]
 
 volumes:
@@ -173,5 +195,5 @@ volumes:
   caddydata:
   caddyconfig:
   ollamadata:
-  wahadata:
+  waakgdata:
   whispermodels:

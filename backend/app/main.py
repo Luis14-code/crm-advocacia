@@ -11,6 +11,7 @@ from app.api import (
     clientes,
     config_api,
     documentos,
+    financeiro,
     movimentacoes,
     notificacoes,
     prazos,
@@ -18,6 +19,7 @@ from app.api import (
     reunioes,
     sync_api,
     usuarios,
+    whatsapp_api,
 )
 from app.config import settings
 
@@ -55,4 +57,6 @@ app.include_router(sync_api.router)
 app.include_router(config_api.router)
 app.include_router(reunioes.router)
 app.include_router(documentos.router)
+app.include_router(financeiro.router)
+app.include_router(whatsapp_api.router)
 app.include_router(chat_ws.router)

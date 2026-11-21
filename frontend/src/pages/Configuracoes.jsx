@@ -11,6 +11,9 @@ export default function Configuracoes() {
   const [status, setStatus] = useState(null);
   const [datajudKey, setDatajudKey] = useState("");
   const [jusbrasil, setJusbrasil] = useState("");
+  const [waUrl, setWaUrl] = useState("");
+  const [waKey, setWaKey] = useState("");
+  const [waSession, setWaSession] = useState("");
   const [teste, setTeste] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -35,10 +38,16 @@ export default function Configuracoes() {
       const body = {};
       if (datajudKey !== "") body.datajud_api_key = datajudKey;
       if (jusbrasil !== "") body.jusbrasil_default_token = jusbrasil;
+      if (waUrl !== "") body.waakg_base_url = waUrl;
+      if (waKey !== "") body.waakg_api_key = waKey;
+      if (waSession !== "") body.waakg_session_id = waSession;
       const novo = await api("/api/config/integracoes", { method: "PUT", body });
       setStatus(novo);
       setDatajudKey("");
       setJusbrasil("");
+      setWaUrl("");
+      setWaKey("");
+      setWaSession("");
       setMsg("✓ Configurações salvas.");
     } catch (e) {
       setMsg(`Erro: ${e.message}`);
@@ -129,6 +138,38 @@ export default function Configuracoes() {
           placeholder={status?.jusbrasil_configurado ? "•••••••• (deixe em branco para manter)" : "Token do JusBrasil"}
           className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-claudio-light"
         />
+      </div>
+
+      {/* WhatsApp (WA-AKG) */}
+      <div className="bg-white rounded-xl border p-5 mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-gray-700">WhatsApp (WA-AKG)</h2>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${status?.waakg_configurado ? "text-green-700 bg-green-100" : "text-gray-600 bg-gray-100"}`}>
+            {status?.waakg_configurado ? "Configurado" : "Não configurado"}
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mb-3">
+          Gateway não-oficial (Baileys). Gere a API key no painel do WA-AKG e cole aqui.
+          Depois conecte e pareie o número na tela de WhatsApp.
+        </p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">URL base</label>
+            <input value={waUrl} onChange={(e) => setWaUrl(e.target.value)}
+              placeholder={status?.waakg_base_url || "http://wa-akg:3000"}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Session ID</label>
+            <input value={waSession} onChange={(e) => setWaSession(e.target.value)}
+              placeholder={status?.waakg_session_id || "claudio"}
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
+          </div>
+        </div>
+        <label className="block text-xs font-medium text-gray-600 mb-1 mt-3">API key (X-API-Key)</label>
+        <input type="password" value={waKey} onChange={(e) => setWaKey(e.target.value)}
+          placeholder={status?.waakg_configurado ? "•••••••• (deixe em branco para manter)" : "API key do WA-AKG"}
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
       </div>
 
       <button

@@ -9,6 +9,8 @@ import Prazos from "./pages/Prazos";
 import Reunioes from "./pages/Reunioes";
 import ReuniaoDetalhe from "./pages/ReuniaoDetalhe";
 import Pecas from "./pages/Pecas";
+import Financeiro from "./pages/Financeiro";
+import Whatsapp from "./pages/Whatsapp";
 import Configuracoes from "./pages/Configuracoes";
 
 function Protegido({ children }) {
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="reunioes" element={<Reunioes />} />
         <Route path="reunioes/:id" element={<ReuniaoDetalhe />} />
         <Route path="pecas" element={<Pecas />} />
+        <Route path="financeiro" element={<Financeiro />} />
+        <Route path="whatsapp" element={<Whatsapp />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

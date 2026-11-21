@@ -20,17 +20,25 @@ router = APIRouter(prefix="/api/config", tags=["config"])
 _socio = require_roles(Perfil.socio)
 
 
-@router.get("/integracoes", response_model=IntegracoesStatus)
-async def status_integracoes(
-    db: AsyncSession = Depends(get_db), _: Usuario = Depends(_socio)
-):
+async def _montar_status(db: AsyncSession) -> IntegracoesStatus:
     _, fonte = await cfg.get_datajud_api_key(db)
     jus = await cfg.get_jusbrasil_default_token(db)
+    wa = await cfg.get_waakg_config(db)
     return IntegracoesStatus(
         datajud_configurada=(fonte != "publico"),
         datajud_fonte=fonte,
         jusbrasil_configurado=bool(jus),
+        waakg_configurado=bool(wa.get("api_key")),
+        waakg_base_url=wa.get("base_url"),
+        waakg_session_id=wa.get("session_id"),
     )
+
+
+@router.get("/integracoes", response_model=IntegracoesStatus)
+async def status_integracoes(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(_socio)
+):
+    return await _montar_status(db)
 
 
 @router.put("/integracoes", response_model=IntegracoesStatus)
@@ -49,15 +57,14 @@ async def salvar_integracoes(
             db, cfg.JUSBRASIL_DEFAULT_TOKEN, body.jusbrasil_default_token.strip(),
             secreto=True, descricao="Token padrão do JusBrasil (fallback)",
         )
+    if body.waakg_base_url is not None:
+        await cfg.definir(db, cfg.WAAKG_BASE_URL, body.waakg_base_url.strip(), descricao="URL base do WA-AKG")
+    if body.waakg_api_key is not None:
+        await cfg.definir(db, cfg.WAAKG_API_KEY, body.waakg_api_key.strip(), secreto=True, descricao="API key do WA-AKG")
+    if body.waakg_session_id is not None:
+        await cfg.definir(db, cfg.WAAKG_SESSION_ID, body.waakg_session_id.strip(), descricao="ID da sessão WA-AKG")
     await db.flush()
-
-    _, fonte = await cfg.get_datajud_api_key(db)
-    jus = await cfg.get_jusbrasil_default_token(db)
-    return IntegracoesStatus(
-        datajud_configurada=(fonte != "publico"),
-        datajud_fonte=fonte,
-        jusbrasil_configurado=bool(jus),
-    )
+    return await _montar_status(db)
 
 
 @router.post("/integracoes/testar-datajud", response_model=TesteResultado)
