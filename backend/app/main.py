@@ -9,6 +9,7 @@ from app.api import (
     briefing,
     chat_ws,
     clientes,
+    config_api,
     movimentacoes,
     notificacoes,
     prazos,
@@ -49,4 +50,5 @@ app.include_router(prazos.router)
 app.include_router(briefing.router)
 app.include_router(notificacoes.router)
 app.include_router(sync_api.router)
+app.include_router(config_api.router)
 app.include_router(chat_ws.router)

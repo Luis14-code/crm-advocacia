@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.integrations import datajud
 from app.integrations.datajud import DataJudError
 from app.models.movimentacao import Movimentacao
+from app.services import configuracoes as cfg
 from app.models.notificacao import Notificacao
 from app.models.prazo import Prazo
 from app.models.processo import Processo
@@ -89,7 +90,8 @@ async def sincronizar_processo(
     resultado = {"processo": processo.numero, "novas": 0, "prazos": 0, "fonte": None, "erro": None}
 
     try:
-        source = await datajud.buscar_processo(processo.numero)
+        api_key, _fonte = await cfg.get_datajud_api_key(db)
+        source = await datajud.buscar_processo(processo.numero, api_key=api_key)
         resultado["fonte"] = "datajud"
     except DataJudError as exc:
         # Fallback: mantém o que já existe (dados do JusBrasil/manual previamente salvos)

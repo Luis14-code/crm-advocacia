@@ -1,0 +1,72 @@
+"""Serviço de configurações do escritório (integrações).
+
+Resolução da chave DataJud (ordem de prioridade):
+  1. Valor salvo no banco (cifrado)  → configurado pelo sócio na tela de Integrações
+  2. DATAJUD_API_KEY no .env
+  3. Chave pública padrão do CNJ (embutida em integrations.datajud)
+"""
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.core.security import criptografar, descriptografar
+from app.integrations.datajud import DEFAULT_PUBLIC_KEY
+from app.models.configuracao import Configuracao
+
+# Chaves conhecidas
+DATAJUD_API_KEY = "datajud_api_key"
+JUSBRASIL_DEFAULT_TOKEN = "jusbrasil_default_token"
+
+# Metadados das chaves expostas na UI (quais são secretas)
+CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN}
+
+
+async def obter(db: AsyncSession, chave: str) -> str | None:
+    """Retorna o valor (decifrado se secreto) ou None."""
+    cfg = (
+        await db.execute(select(Configuracao).where(Configuracao.chave == chave))
+    ).scalar_one_or_none()
+    if not cfg or cfg.valor is None:
+        return None
+    if cfg.secreto:
+        return descriptografar(cfg.valor)
+    return cfg.valor
+
+
+async def definir(
+    db: AsyncSession, chave: str, valor: str | None, secreto: bool = False, descricao: str | None = None
+) -> None:
+    """Cria/atualiza uma configuração. valor=None/"" remove o valor (volta ao padrão)."""
+    cfg = (
+        await db.execute(select(Configuracao).where(Configuracao.chave == chave))
+    ).scalar_one_or_none()
+
+    valor_armazenado = None
+    if valor:
+        valor_armazenado = criptografar(valor) if secreto else valor
+
+    if cfg:
+        cfg.valor = valor_armazenado
+        cfg.secreto = secreto
+        if descricao:
+            cfg.descricao = descricao
+    else:
+        db.add(
+            Configuracao(
+                chave=chave, valor=valor_armazenado, secreto=secreto, descricao=descricao
+            )
+        )
+
+
+async def get_datajud_api_key(db: AsyncSession) -> tuple[str, str]:
+    """Resolve a chave DataJud. Retorna (chave, fonte) com fonte em db|env|publico."""
+    do_banco = await obter(db, DATAJUD_API_KEY)
+    if do_banco:
+        return do_banco, "db"
+    if settings.datajud_api_key:
+        return settings.datajud_api_key, "env"
+    return DEFAULT_PUBLIC_KEY, "publico"
+
+
+async def get_jusbrasil_default_token(db: AsyncSession) -> str | None:
+    return await obter(db, JUSBRASIL_DEFAULT_TOKEN)

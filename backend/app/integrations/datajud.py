@@ -83,15 +83,20 @@ def _api_key() -> str:
     return settings.datajud_api_key or DEFAULT_PUBLIC_KEY
 
 
-async def buscar_processo(numero: str) -> dict | None:
-    """Consulta o processo pelo número CNJ. Retorna o _source do primeiro hit, ou None."""
+async def buscar_processo(numero: str, api_key: str | None = None) -> dict | None:
+    """Consulta o processo pelo número CNJ. Retorna o _source do primeiro hit, ou None.
+
+    `api_key` (quando informada) tem prioridade sobre o .env/chave pública — permite
+    que a chave venha das Configurações do sistema (tabela configuracoes).
+    """
     alias = alias_tribunal(numero)
     if not alias:
         logger.warning("Tribunal não mapeado para o número %s", numero)
         return None
 
     url = f"{BASE_URL}/{alias}/_search"
-    headers = {"Authorization": f"APIKey {_api_key()}", "Content-Type": "application/json"}
+    chave = api_key or _api_key()
+    headers = {"Authorization": f"APIKey {chave}", "Content-Type": "application/json"}
     query = {"query": {"match": {"numeroProcesso": normalizar_numero(numero)}}, "size": 1}
 
     try:
@@ -103,6 +108,23 @@ async def buscar_processo(numero: str) -> dict | None:
     except httpx.HTTPError as exc:
         logger.warning("Falha DataJud (%s): %s", numero, exc)
         raise DataJudError(str(exc)) from exc
+
+
+async def testar_conexao(api_key: str | None = None) -> tuple[bool, str]:
+    """Testa a autenticação na API do DataJud (consulta leve no TRF1). (ok, detalhe)."""
+    url = f"{BASE_URL}/api_publica_trf1/_search"
+    chave = api_key or _api_key()
+    headers = {"Authorization": f"APIKey {chave}", "Content-Type": "application/json"}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, headers=headers, json={"query": {"match_all": {}}, "size": 0})
+        if resp.status_code == 200:
+            return True, "Conexão OK — chave aceita pelo DataJud."
+        if resp.status_code in (401, 403):
+            return False, "Chave rejeitada (401/403). Verifique a API key."
+        return False, f"Resposta inesperada do DataJud: HTTP {resp.status_code}."
+    except httpx.HTTPError as exc:
+        return False, f"Falha de conexão: {exc}"
 
 
 def extrair_movimentacoes(source: dict) -> list[dict]:

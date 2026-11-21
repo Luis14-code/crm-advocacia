@@ -8,6 +8,7 @@ const MENU = [
   { to: "/", label: "Dashboard", icon: "📊", perfis: ["socio", "advogado", "estagiario", "financeiro"] },
   { to: "/processos", label: "Processos", icon: "⚖️", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/prazos", label: "Prazos", icon: "⏰", perfis: ["socio", "advogado", "estagiario"] },
+  { to: "/configuracoes", label: "Configurações", icon: "⚙️", perfis: ["socio"] },
 ];
 
 export default function Layout() {

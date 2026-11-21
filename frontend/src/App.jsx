@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Processos from "./pages/Processos";
 import ProcessoDetalhe from "./pages/ProcessoDetalhe";
 import Prazos from "./pages/Prazos";
+import Configuracoes from "./pages/Configuracoes";
 
 function Protegido({ children }) {
   const user = useAuth((s) => s.user);
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="processos" element={<Processos />} />
         <Route path="processos/:id" element={<ProcessoDetalhe />} />
         <Route path="prazos" element={<Prazos />} />
+        <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
