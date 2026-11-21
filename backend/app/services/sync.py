@@ -116,6 +116,7 @@ async def sincronizar_processo(
 
     novas = 0
     prazos_criados = 0
+    ultima_nova_desc: str | None = None
     for mov in movimentacoes:
         data_mov = _parse_data(mov.get("data"))
         chave = (data_mov.isoformat() if data_mov else None, mov["descricao"])
@@ -132,6 +133,8 @@ async def sincronizar_processo(
             )
         )
         novas += 1
+        if ultima_nova_desc is None:
+            ultima_nova_desc = mov["descricao"]
 
         # Notificação da nova movimentação
         if criar_notificacoes and processo.advogado_id:
@@ -161,21 +164,18 @@ async def sincronizar_processo(
                     )
                 )
 
-    # Gatilho WhatsApp (human-in-the-loop): 1 mensagem pendente por processo com
-    # movimentação nova, se o cliente tiver telefone e não tiver opt-out.
-    if novas and processo.cliente_id:
+    # Gatilho WhatsApp: ao detectar movimentação nova, a IA gera uma mensagem amigável
+    # e, se o auto-envio estiver ligado (padrão), envia direto (sem pré-aprovação).
+    if novas and processo.cliente_id and ultima_nova_desc:
         from app.models.cliente import Cliente
         from app.services import whatsapp as wsvc
 
         cliente = await db.get(Cliente, processo.cliente_id)
-        if cliente:
-            texto = wsvc.render_template(
-                "movimentacao",
-                {"nome": cliente.nome.split()[0], "processo": processo.numero},
-            )
-            await wsvc.criar_pendente(
+        if cliente and cliente.telefone and not cliente.whatsapp_opt_out:
+            texto = await wsvc.mensagem_movimentacao(cliente.nome, processo.numero, ultima_nova_desc)
+            await wsvc.disparar(
                 db, cliente, texto, gatilho="movimentacao",
-                usuario_id=processo.advogado_id, processo_id=processo.id,
+                processo_id=processo.id, usuario_id=processo.advogado_id,
             )
 
     resultado["novas"] = novas

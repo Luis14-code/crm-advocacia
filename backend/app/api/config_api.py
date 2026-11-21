@@ -24,6 +24,7 @@ async def _montar_status(db: AsyncSession) -> IntegracoesStatus:
     _, fonte = await cfg.get_datajud_api_key(db)
     jus = await cfg.get_jusbrasil_default_token(db)
     wa = await cfg.get_waakg_config(db)
+    pag = await cfg.get_pagamentos_config(db)
     return IntegracoesStatus(
         datajud_configurada=(fonte != "publico"),
         datajud_fonte=fonte,
@@ -31,6 +32,9 @@ async def _montar_status(db: AsyncSession) -> IntegracoesStatus:
         waakg_configurado=bool(wa.get("api_key")),
         waakg_base_url=wa.get("base_url"),
         waakg_session_id=wa.get("session_id"),
+        whatsapp_auto_envio=await cfg.get_whatsapp_auto_envio(db),
+        pagamentos_provedor=pag.get("provedor") or "manual",
+        pagamentos_configurado=bool(pag.get("api_key")),
     )
 
 
@@ -63,6 +67,14 @@ async def salvar_integracoes(
         await cfg.definir(db, cfg.WAAKG_API_KEY, body.waakg_api_key.strip(), secreto=True, descricao="API key do WA-AKG")
     if body.waakg_session_id is not None:
         await cfg.definir(db, cfg.WAAKG_SESSION_ID, body.waakg_session_id.strip(), descricao="ID da sessão WA-AKG")
+    if body.whatsapp_auto_envio is not None:
+        await cfg.definir(db, cfg.WHATSAPP_AUTO_ENVIO, "true" if body.whatsapp_auto_envio else "false", descricao="Auto-envio de gatilhos WhatsApp")
+    if body.pagamentos_provedor is not None:
+        await cfg.definir(db, cfg.PAGAMENTOS_PROVEDOR, body.pagamentos_provedor.strip(), descricao="Provedor de pagamentos")
+    if body.pagamentos_api_key is not None:
+        await cfg.definir(db, cfg.PAGAMENTOS_API_KEY, body.pagamentos_api_key.strip(), secreto=True, descricao="API key do provedor de pagamentos")
+    if body.pagamentos_base_url is not None:
+        await cfg.definir(db, cfg.PAGAMENTOS_BASE_URL, body.pagamentos_base_url.strip(), descricao="URL base do provedor de pagamentos")
     await db.flush()
     return await _montar_status(db)
 

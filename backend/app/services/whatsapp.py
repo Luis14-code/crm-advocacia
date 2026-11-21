@@ -45,6 +45,34 @@ def render_template(nome: str, contexto: dict) -> str:
         return modelo
 
 
+async def mensagem_movimentacao(cliente_nome: str, numero_processo: str, descricao_mov: str) -> str:
+    """Traduz uma movimentação processual para uma mensagem amigável ao cliente.
+
+    Usa o LLM quando disponível; cai no template genérico caso contrário.
+    """
+    from app.agent.llm import LLMUnavailable, gerar
+
+    primeiro = cliente_nome.split()[0] if cliente_nome else "cliente"
+    try:
+        system = (
+            "Você escreve mensagens curtas e claras de um escritório de advocacia para o "
+            "cliente, em português simples, sem juridiquês, tom cordial. Máximo 3 frases. "
+            "Não prometa resultados nem dê prazos que não existam. Não use dados sensíveis."
+        )
+        prompt = (
+            f"Cliente: {primeiro}. Processo: {numero_processo}. "
+            f"Movimentação ocorrida: \"{descricao_mov}\". "
+            "Escreva a mensagem de WhatsApp avisando o cliente sobre o andamento, de forma que "
+            "ele entenda o que aconteceu. Assine como 'Equipe do escritório'."
+        )
+        texto = await gerar(prompt, system=system, temperatura=0.4)
+        if texto and len(texto) > 15:
+            return texto.strip()
+    except LLMUnavailable:
+        pass
+    return render_template("movimentacao", {"nome": primeiro, "processo": numero_processo})
+
+
 async def cliente_waakg(db: AsyncSession) -> WaakgClient | None:
     conf = await cfg.get_waakg_config(db)
     if not conf.get("api_key"):
@@ -113,6 +141,32 @@ async def espera_por_rate_limit(db: AsyncSession) -> int:
     if desde is not None and desde < settings.whatsapp_intervalo_min_seg:
         return settings.whatsapp_intervalo_min_seg - desde
     return 0
+
+
+async def disparar(
+    db: AsyncSession,
+    cliente: Cliente,
+    texto: str,
+    gatilho: str,
+    processo_id: int | None = None,
+    usuario_id: int | None = None,
+) -> MensagemWhatsapp | None:
+    """Cria a mensagem e, se o auto-envio estiver ligado, enfileira o envio direto.
+
+    Usado pelos gatilhos transacionais (movimentação, boleto), que o escritório
+    optou por enviar sem pré-aprovação. Respeita opt-out e configuração.
+    """
+    auto = await cfg.get_whatsapp_auto_envio(db)
+    msg = await criar_pendente(
+        db, cliente, texto, gatilho=gatilho, usuario_id=usuario_id,
+        processo_id=processo_id, auto_aprovar=auto,
+    )
+    if msg and auto:
+        from app.tasks.whatsapp_tasks import enviar_whatsapp_task
+
+        # countdown dá tempo do commit do chamador acontecer antes do envio
+        enviar_whatsapp_task.apply_async((msg.id,), countdown=8)
+    return msg
 
 
 async def criar_pendente(

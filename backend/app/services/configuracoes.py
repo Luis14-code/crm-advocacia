@@ -19,9 +19,14 @@ JUSBRASIL_DEFAULT_TOKEN = "jusbrasil_default_token"
 WAAKG_BASE_URL = "waakg_base_url"
 WAAKG_API_KEY = "waakg_api_key"
 WAAKG_SESSION_ID = "waakg_session_id"
+WHATSAPP_AUTO_ENVIO = "whatsapp_auto_envio"  # "true"/"false" — gatilhos saem sem aprovação
+# Pagamentos / banco
+PAGAMENTOS_PROVEDOR = "pagamentos_provedor"   # asaas | paghiper | manual
+PAGAMENTOS_API_KEY = "pagamentos_api_key"
+PAGAMENTOS_BASE_URL = "pagamentos_base_url"
 
 # Metadados das chaves expostas na UI (quais são secretas)
-CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN, WAAKG_API_KEY}
+CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN, WAAKG_API_KEY, PAGAMENTOS_API_KEY}
 
 
 async def obter(db: AsyncSession, chave: str) -> str | None:
@@ -82,4 +87,21 @@ async def get_waakg_config(db: AsyncSession) -> dict:
         "base_url": (base or "http://wa-akg:3000").rstrip("/"),
         "api_key": await obter(db, WAAKG_API_KEY),
         "session_id": await obter(db, WAAKG_SESSION_ID) or "claudio",
+    }
+
+
+async def get_whatsapp_auto_envio(db: AsyncSession) -> bool:
+    """Se True, gatilhos (movimentação, boleto) são enviados sem pré-aprovação. Padrão: True."""
+    valor = await obter(db, WHATSAPP_AUTO_ENVIO)
+    if valor is None:
+        return True
+    return valor.lower() in ("1", "true", "sim", "on")
+
+
+async def get_pagamentos_config(db: AsyncSession) -> dict:
+    """Configuração do provedor de pagamentos/banco (gateway de boleto)."""
+    return {
+        "provedor": await obter(db, PAGAMENTOS_PROVEDOR) or "manual",
+        "api_key": await obter(db, PAGAMENTOS_API_KEY),
+        "base_url": await obter(db, PAGAMENTOS_BASE_URL),
     }

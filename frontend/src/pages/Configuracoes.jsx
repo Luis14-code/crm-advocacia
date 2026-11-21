@@ -14,6 +14,10 @@ export default function Configuracoes() {
   const [waUrl, setWaUrl] = useState("");
   const [waKey, setWaKey] = useState("");
   const [waSession, setWaSession] = useState("");
+  const [autoEnvio, setAutoEnvio] = useState(true);
+  const [pagProvedor, setPagProvedor] = useState("");
+  const [pagKey, setPagKey] = useState("");
+  const [pagUrl, setPagUrl] = useState("");
   const [teste, setTeste] = useState(null);
   const [msg, setMsg] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -21,7 +25,10 @@ export default function Configuracoes() {
 
   async function carregar() {
     try {
-      setStatus(await api("/api/config/integracoes"));
+      const s = await api("/api/config/integracoes");
+      setStatus(s);
+      setAutoEnvio(s.whatsapp_auto_envio);
+      setPagProvedor(s.pagamentos_provedor || "manual");
     } catch (e) {
       setMsg(e.message);
     }
@@ -41,6 +48,10 @@ export default function Configuracoes() {
       if (waUrl !== "") body.waakg_base_url = waUrl;
       if (waKey !== "") body.waakg_api_key = waKey;
       if (waSession !== "") body.waakg_session_id = waSession;
+      body.whatsapp_auto_envio = autoEnvio;
+      body.pagamentos_provedor = pagProvedor;
+      if (pagKey !== "") body.pagamentos_api_key = pagKey;
+      if (pagUrl !== "") body.pagamentos_base_url = pagUrl;
       const novo = await api("/api/config/integracoes", { method: "PUT", body });
       setStatus(novo);
       setDatajudKey("");
@@ -48,6 +59,8 @@ export default function Configuracoes() {
       setWaUrl("");
       setWaKey("");
       setWaSession("");
+      setPagKey("");
+      setPagUrl("");
       setMsg("✓ Configurações salvas.");
     } catch (e) {
       setMsg(`Erro: ${e.message}`);
@@ -170,6 +183,46 @@ export default function Configuracoes() {
         <input type="password" value={waKey} onChange={(e) => setWaKey(e.target.value)}
           placeholder={status?.waakg_configurado ? "•••••••• (deixe em branco para manter)" : "API key do WA-AKG"}
           className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
+        <label className="flex items-center gap-2 mt-3 text-sm text-gray-700">
+          <input type="checkbox" checked={autoEnvio} onChange={(e) => setAutoEnvio(e.target.checked)} />
+          Enviar avisos automáticos (movimentação, boleto) sem pré-aprovação
+        </label>
+      </div>
+
+      {/* Pagamentos / Banco */}
+      <div className="bg-white rounded-xl border p-5 mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-semibold text-gray-700">Pagamentos / Banco</h2>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${status?.pagamentos_configurado ? "text-green-700 bg-green-100" : "text-gray-600 bg-gray-100"}`}>
+            {status?.pagamentos_configurado ? "Configurado" : "Não configurado"}
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mb-3">
+          Gateway que emite boletos e notifica os pagamentos (baixa automática + conciliação).
+          Também é possível importar o extrato (OFX/CSV) na tela Financeiro.
+        </p>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Provedor</label>
+            <select value={pagProvedor} onChange={(e) => setPagProvedor(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm">
+              <option value="manual">Manual (sem gateway)</option>
+              <option value="asaas">Asaas</option>
+              <option value="asaas_sandbox">Asaas (sandbox)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">URL base (opcional)</label>
+            <input value={pagUrl} onChange={(e) => setPagUrl(e.target.value)}
+              placeholder="padrão do provedor"
+              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
+          </div>
+        </div>
+        <label className="block text-xs font-medium text-gray-600 mb-1 mt-3">API key</label>
+        <input type="password" value={pagKey} onChange={(e) => setPagKey(e.target.value)}
+          placeholder={status?.pagamentos_configurado ? "•••••••• (deixe em branco para manter)" : "Chave do provedor"}
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-claudio-light" />
+        <p className="text-xs text-gray-400 mt-2">Webhook para o provedor chamar: <code>/api/pagamentos/webhook</code></p>
       </div>
 
       <button

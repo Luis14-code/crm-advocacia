@@ -14,6 +14,7 @@ from app.api import (
     financeiro,
     movimentacoes,
     notificacoes,
+    pagamentos_api,
     prazos,
     processos,
     reunioes,
@@ -59,4 +60,5 @@ app.include_router(reunioes.router)
 app.include_router(documentos.router)
 app.include_router(financeiro.router)
 app.include_router(whatsapp_api.router)
+app.include_router(pagamentos_api.router)
 app.include_router(chat_ws.router)

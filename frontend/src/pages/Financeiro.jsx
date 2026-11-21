@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api, getSensitiveToken } from "../lib/api";
+import { useEffect, useRef, useState } from "react";
+import { api, getSensitiveToken, API_URL } from "../lib/api";
 import SensitiveGate from "../components/SensitiveGate";
 
 const fmt = (v) =>
@@ -8,8 +8,11 @@ const fmt = (v) =>
 function Conteudo() {
   const sens = () => getSensitiveToken();
   const [caixa, setCaixa] = useState(null);
+  const [dash, setDash] = useState(null);
   const [transacoes, setTransacoes] = useState([]);
   const [aba, setAba] = useState("resumo");
+  const [importMsg, setImportMsg] = useState(null);
+  const fileRef = useRef(null);
 
   // Simulador
   const [processos, setProcessos] = useState([]);
@@ -35,8 +38,49 @@ function Conteudo() {
   useEffect(() => {
     carregar();
     api("/api/processos").then(setProcessos).catch(() => {});
+    api("/api/financeiro/dashboard", { sensitive: sens() }).then(setDash).catch(() => {});
+
+    // Dashboard em tempo real (SSE)
+    const access = localStorage.getItem("access_token");
+    const es = new EventSource(
+      `${API_URL}/api/financeiro/dashboard/stream?token=${access}&sensitive=${sens()}`
+    );
+    es.onmessage = (ev) => {
+      try {
+        setDash(JSON.parse(ev.data));
+      } catch {
+        /* ignora */
+      }
+    };
+    es.onerror = () => es.close();
+    return () => es.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function importarExtrato(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportMsg("Importando...");
+    const form = new FormData();
+    form.append("arquivo", file);
+    try {
+      const resp = await fetch(`${API_URL}/api/financeiro/conciliacao/importar`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          "X-Sensitive-Token": sens(),
+        },
+        body: form,
+      });
+      const r = await resp.json();
+      if (!resp.ok) throw new Error(r.detail || "falha");
+      setImportMsg(`✓ ${r.lancamentos} lançamentos: ${r.conciliadas} conciliados, ${r.novas} novos.`);
+      carregar();
+    } catch (err) {
+      setImportMsg(`Erro: ${err.message}`);
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   async function simular(e) {
     e.preventDefault();
@@ -58,14 +102,20 @@ function Conteudo() {
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Financeiro</h1>
       {erro && <p className="text-red-600 mb-3 text-sm">{erro}</p>}
 
-      {/* KPIs */}
-      {caixa && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-green-600 text-white rounded-xl p-4"><p className="text-xs opacity-80">Entradas (30d)</p><p className="text-xl font-bold">{fmt(caixa.entradas)}</p></div>
-          <div className="bg-red-500 text-white rounded-xl p-4"><p className="text-xs opacity-80">Saídas (30d)</p><p className="text-xl font-bold">{fmt(caixa.saidas)}</p></div>
-          <div className="bg-claudio text-white rounded-xl p-4"><p className="text-xs opacity-80">A receber</p><p className="text-xl font-bold">{fmt(caixa.a_receber)}</p></div>
-          <div className="bg-yellow-500 text-white rounded-xl p-4"><p className="text-xs opacity-80">Inadimplência</p><p className="text-xl font-bold">{fmt(caixa.inadimplencia)}</p></div>
-        </div>
+      {/* KPIs em tempo real */}
+      {dash && (
+        <>
+          <div className="flex items-center gap-2 mb-2 text-xs text-gray-400">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Tempo real · atualizado {dash.atualizado_em?.slice(11, 19)}
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-green-600 text-white rounded-xl p-4"><p className="text-xs opacity-80">Faturado na semana</p><p className="text-xl font-bold">{fmt(dash.faturado_semana)}</p></div>
+            <div className="bg-claudio text-white rounded-xl p-4"><p className="text-xs opacity-80">Faturado no mês</p><p className="text-xl font-bold">{fmt(dash.faturado_mes)}</p></div>
+            <div className="bg-claudio-light text-white rounded-xl p-4"><p className="text-xs opacity-80">A receber</p><p className="text-xl font-bold">{fmt(dash.a_receber)}</p></div>
+            <div className="bg-yellow-500 text-white rounded-xl p-4"><p className="text-xs opacity-80">Inadimplência</p><p className="text-xl font-bold">{fmt(dash.inadimplencia)}</p></div>
+          </div>
+        </>
       )}
 
       <div className="flex gap-2 mb-4">
@@ -78,6 +128,14 @@ function Conteudo() {
       </div>
 
       {aba === "transacoes" && (
+        <>
+        <div className="flex items-center gap-3 mb-3">
+          <label className="text-sm bg-white border rounded-lg px-3 py-1.5 cursor-pointer hover:bg-gray-50">
+            📥 Importar extrato (OFX/CSV)
+            <input ref={fileRef} type="file" accept=".ofx,.csv,.txt" onChange={importarExtrato} className="hidden" />
+          </label>
+          {importMsg && <span className="text-sm text-claudio">{importMsg}</span>}
+        </div>
         <div className="bg-white rounded-xl border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500 text-left">
@@ -98,6 +156,7 @@ function Conteudo() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {aba === "simulador" && (

@@ -1,5 +1,5 @@
 """Serviço financeiro: simulador de acordo, fluxo de caixa, relatório, boletos."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
@@ -156,12 +156,50 @@ async def relatorio_periodo(db: AsyncSession, inicio: date, fim: date) -> dict:
     return {**caixa, "por_categoria": categorias}
 
 
+async def dashboard(db: AsyncSession) -> dict:
+    """KPIs para o painel em tempo real (hoje, semana, mês)."""
+    hoje = date.today()
+    inicio_semana = hoje - timedelta(days=hoje.weekday())  # segunda-feira
+    inicio_mes = hoje.replace(day=1)
+
+    async def _recebido(desde: date) -> Decimal:
+        v = (
+            await db.execute(
+                select(func.coalesce(func.sum(Transacao.valor), 0)).where(
+                    Transacao.status == "pago",
+                    Transacao.tipo == "entrada",
+                    Transacao.data_pagamento >= desde,
+                )
+            )
+        ).scalar_one()
+        return _q(v)
+
+    caixa_mes = await fluxo_caixa(db, inicio_mes, hoje)
+    return {
+        "faturado_hoje": float(await _recebido(hoje)),
+        "faturado_semana": float(await _recebido(inicio_semana)),
+        "faturado_mes": float(await _recebido(inicio_mes)),
+        "entradas_mes": caixa_mes["entradas"],
+        "saidas_mes": caixa_mes["saidas"],
+        "saldo_mes": caixa_mes["saldo"],
+        "a_receber": caixa_mes["a_receber"],
+        "inadimplencia": caixa_mes["inadimplencia"],
+        "atualizado_em": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
 async def gerar_boleto(
     db: AsyncSession, cliente_id: int, valor: Decimal, vencimento: date,
     processo_id: int | None = None, descricao: str | None = None,
 ) -> Transacao:
-    """Gera um 'boleto' (placeholder — Fase 4). Integração com gateway real fica para depois."""
-    # Placeholder: gera uma transação de entrada com URL fictícia do boleto.
+    """Emite um boleto via gateway configurado; se não houver, registra placeholder.
+
+    A transação fica como 'entrada/pendente' e é conciliada quando o pagamento chega
+    (webhook do gateway ou import de extrato).
+    """
+    from app.models.cliente import Cliente
+    from app.services import configuracoes as cfg
+
     transacao = Transacao(
         processo_id=processo_id,
         cliente_id=cliente_id,
@@ -171,10 +209,35 @@ async def gerar_boleto(
         valor=_q(valor),
         data_vencimento=vencimento,
         status="pendente",
-        boleto_id=f"PLACEHOLDER-{date.today().strftime('%Y%m%d')}-{cliente_id}",
-        boleto_url="https://boleto.exemplo/placeholder",
     )
     db.add(transacao)
+    await db.flush()  # garante transacao.id para usar como referência externa
+
+    conf = await cfg.get_pagamentos_config(db)
+    if conf.get("api_key") and conf.get("provedor") not in (None, "manual"):
+        from app.integrations.pagamentos import PagamentosClient, PagamentosError
+
+        cliente = await db.get(Cliente, cliente_id)
+        client = PagamentosClient(conf["provedor"], conf["api_key"], conf.get("base_url"))
+        try:
+            res = await client.criar_cobranca(
+                nome=cliente.nome if cliente else "Cliente",
+                cpf=cliente.cpf if cliente else None,
+                valor=float(_q(valor)),
+                vencimento=vencimento.isoformat(),
+                descricao=transacao.descricao,
+                external_ref=str(transacao.id),
+            )
+            transacao.boleto_id = res.get("id")
+            transacao.boleto_url = res.get("url")
+        except PagamentosError:
+            transacao.boleto_id = f"PENDENTE-{transacao.id}"
+            transacao.boleto_url = None
+    else:
+        # Sem gateway: placeholder (referência = id da transação)
+        transacao.boleto_id = f"PLACEHOLDER-{transacao.id}"
+        transacao.boleto_url = "https://boleto.exemplo/placeholder"
+
     await db.flush()
     await db.refresh(transacao)
     return transacao

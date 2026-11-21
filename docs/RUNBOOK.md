@@ -120,19 +120,46 @@ Sem o Ollama, tudo continua funcionando via fallback por regras.
 
 ---
 
-## 7. Boleto real (quando formos integrar — futuro)
+## 7. Conta bancária / pagamentos (conciliação automática)
 
-Hoje o boleto é **placeholder** (registra a cobrança e agenda o aviso, sem banco real).
-Para emitir boleto de verdade, você precisará criar conta num gateway (ex.: **Asaas** ou
-**PagHiper**) e me passar a API key — a integração entra como as outras (gerenciável em
-Configurações). Me avise quando quiser e eu implemento.
+O objetivo é que **entradas e saídas fiquem em sincronia com os recebimentos**, o sistema
+saiba **de quem veio cada boleto pago** e o **dashboard atualize em tempo real**. Há três
+caminhos, do mais simples ao mais completo:
+
+**A) Gateway de boleto (recomendado) — identifica o pagador automaticamente**
+1. Crie conta num gateway (ex.: **Asaas**; PagHiper e outros podem ser adicionados).
+2. Em **Configurações → Pagamentos / Banco**, escolha o provedor e cole a **API key**.
+3. No painel do gateway, cadastre o **webhook de pagamento** apontando para:
+   ```
+   http://SEU_HOST/api/pagamentos/webhook
+   ```
+4. A partir daí: ao emitir boleto, ele é criado no gateway; quando o cliente paga, o
+   gateway avisa, o sistema **dá baixa automática**, registra **quem pagou** e **atualiza
+   o dashboard em tempo real**. (O boleto também é enviado ao cliente por WhatsApp.)
+
+**B) Importar extrato (OFX/CSV) — sem depender de API, funciona já**
+- Em **Financeiro → Transações → Importar extrato**, suba o arquivo OFX/CSV do banco.
+- O sistema concilia os créditos com as cobranças pendentes (mesmo valor + data próxima)
+  e registra os demais lançamentos. Bom para fechamento periódico.
+
+**C) API direta do banco (Open Finance) — futuro, precisa de você**
+- Integração direta com o banco (saldo/extrato em tempo real via Open Finance) exige
+  **cadastro e credenciais/certificados** junto à sua instituição. Quando você tiver esse
+  acesso, me passa as credenciais e eu ligo pela mesma tela de Configurações.
+
+> **Dashboard em tempo real:** a tela Financeiro já mostra faturamento da semana/mês e
+> inadimplência atualizando sozinha (via streaming), conforme os pagamentos entram.
 
 ---
 
 ## Resumo do que você precisa providenciar
 
-1. **Senha sensível** (você define no `.env`, passo 1).
-2. **Número/chip de WhatsApp dedicado** + parear o QR (passo 4).
-3. (Depois) **Conta num gateway de boleto**, só quando formos ligar boleto real.
+1. **Senha sensível** (você define no `.env`, passo 1) — abre o Financeiro.
+2. **Número/chip de WhatsApp dedicado** + parear o QR (passo 4). Avisos de movimentação e
+   boleto saem **automáticos** (dá pra desligar em Configurações).
+3. **Conta num gateway de boleto** (ex.: Asaas) para a conciliação automática identificar
+   quem pagou (passo 7A). Enquanto isso, dá para usar a **importação de extrato** (7B).
+4. (Futuro) **Credenciais de Open Finance** do seu banco, se quiser extrato direto em
+   tempo real (passo 7C).
 
 Todo o resto é automático.

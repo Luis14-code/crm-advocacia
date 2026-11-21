@@ -1,12 +1,27 @@
 """Módulo financeiro — exige perfil (sócio/financeiro) E token sensível."""
+import asyncio
+import json
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import jwt
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_sensitive
-from app.database import get_db
+from app.core.security import decodificar_token
+from app.database import async_session_factory, get_db
+from app.models.cliente import Cliente
 from app.models.financeiro import Transacao
 from app.models.processo import Processo
 from app.models.usuario import Usuario
@@ -17,7 +32,8 @@ from app.schemas.financeiro import (
     TransacaoOut,
     TransacaoUpdate,
 )
-from app.services import financeiro as svc
+from app.services import conciliacao, financeiro as svc
+from app.services import whatsapp as wsvc
 
 router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
 
@@ -127,5 +143,60 @@ async def gerar_boleto(
     transacao = await svc.gerar_boleto(
         db, body.cliente_id, body.valor, body.vencimento, body.processo_id, body.descricao
     )
-    # Envio por WhatsApp (se solicitado) é tratado pelo módulo WhatsApp com confirmação.
+    # Envio automático do boleto por WhatsApp (gatilho transacional, sem pré-aprovação).
+    if body.enviar_whatsapp:
+        cliente = await db.get(Cliente, body.cliente_id)
+        if cliente and cliente.telefone and not cliente.whatsapp_opt_out:
+            texto = wsvc.render_template(
+                "boleto",
+                {
+                    "nome": cliente.nome.split()[0],
+                    "valor": f"{float(body.valor):.2f}",
+                    "data": body.vencimento.strftime("%d/%m/%Y"),
+                },
+            )
+            if transacao.boleto_url:
+                texto += f"\n{transacao.boleto_url}"
+            await wsvc.disparar(db, cliente, texto, gatilho="boleto", processo_id=body.processo_id)
     return transacao
+
+
+@router.post("/conciliacao/importar")
+async def importar_extrato(
+    arquivo: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_financeiro),
+):
+    conteudo = (await arquivo.read()).decode("latin-1", errors="ignore")
+    resultado = await conciliacao.importar_extrato(db, conteudo)
+    return resultado
+
+
+@router.get("/dashboard")
+async def dashboard(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_financeiro)
+):
+    return await svc.dashboard(db)
+
+
+@router.get("/dashboard/stream")
+async def dashboard_stream(request: Request, token: str = "", sensitive: str = ""):
+    """SSE com os KPIs em tempo real. Autentica por query (EventSource não envia headers)."""
+    try:
+        acesso = decodificar_token(token, "access")
+        sens = decodificar_token(sensitive, "sensitive")
+        if int(acesso["sub"]) != int(sens["sub"]):
+            raise ValueError("tokens de usuários diferentes")
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Tokens inválidos")
+
+    async def gerar():
+        while True:
+            if await request.is_disconnected():
+                break
+            async with async_session_factory() as db:
+                dados = await svc.dashboard(db)
+            yield f"data: {json.dumps(dados)}\n\n"
+            await asyncio.sleep(10)
+
+    return StreamingResponse(gerar(), media_type="text/event-stream")

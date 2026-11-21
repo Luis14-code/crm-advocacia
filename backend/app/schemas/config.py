@@ -8,6 +8,9 @@ class IntegracoesStatus(BaseModel):
     waakg_configurado: bool
     waakg_base_url: str | None = None
     waakg_session_id: str | None = None
+    whatsapp_auto_envio: bool
+    pagamentos_provedor: str
+    pagamentos_configurado: bool
 
 
 class IntegracoesUpdate(BaseModel):
@@ -17,6 +20,10 @@ class IntegracoesUpdate(BaseModel):
     waakg_base_url: str | None = None
     waakg_api_key: str | None = None
     waakg_session_id: str | None = None
+    whatsapp_auto_envio: bool | None = None
+    pagamentos_provedor: str | None = None
+    pagamentos_api_key: str | None = None
+    pagamentos_base_url: str | None = None
 
 
 class TestarDataJud(BaseModel):

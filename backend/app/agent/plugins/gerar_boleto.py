@@ -6,6 +6,7 @@ from app.agent.base import AgentContext, BasePlugin, PluginResult
 from app.agent.registry import register_plugin
 from app.models.cliente import Cliente
 from app.services import financeiro as svc
+from app.services import whatsapp as wsvc
 
 
 @register_plugin
@@ -44,12 +45,27 @@ class GerarBoletoPlugin(BasePlugin):
             context.db, cliente.id, valor, venc,
             processo_id=params.get("processo_id"), descricao=params.get("descricao"),
         )
+
+        # Envio automático do boleto por WhatsApp (gatilho transacional)
+        aviso = ""
+        if cliente.telefone and not cliente.whatsapp_opt_out:
+            texto = wsvc.render_template(
+                "boleto",
+                {"nome": cliente.nome.split()[0], "valor": f"{float(valor):.2f}", "data": venc.strftime("%d/%m/%Y")},
+            )
+            if transacao.boleto_url:
+                texto += f"\n{transacao.boleto_url}"
+            msg = await wsvc.disparar(
+                context.db, cliente, texto, gatilho="boleto", processo_id=params.get("processo_id")
+            )
+            if msg:
+                aviso = " Aviso enviado ao cliente por WhatsApp." if msg.status == "aprovada" else " Aviso de WhatsApp aguardando confirmação."
+
         return PluginResult(
             success=True,
             data={"transacao_id": transacao.id, "boleto_url": transacao.boleto_url},
             display=(
                 f"🧾 Boleto gerado para **{cliente.nome}**: R$ {float(valor):.2f}, "
-                f"vence {venc.strftime('%d/%m/%Y')}.\n"
-                "_(placeholder — integração com gateway real de boleto fica para a próxima etapa)_"
+                f"vence {venc.strftime('%d/%m/%Y')}.{aviso}"
             ),
         )
