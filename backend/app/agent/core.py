@@ -1,5 +1,6 @@
 """Orquestrador do Cláudio: classifica intenção, executa plugin, audita e responde."""
 import logging
+import re
 import time
 from dataclasses import asdict
 
@@ -20,9 +21,27 @@ def _descricao_plugins(perfil: str) -> str:
     )
 
 
+# Número CNJ: NNNNNNN-DD.AAAA.J.TR.OOOO (com ou sem máscara)
+_CNJ_RE = re.compile(r"\d{7}-?\d{2}\.?\d{4}\.?\d\.?\d{2}\.?\d{4}")
+
+
 def _roteamento_heuristico(mensagem: str) -> tuple[str, dict] | None:
     """Fallback simples por palavras-chave quando o LLM está indisponível."""
     m = mensagem.lower()
+
+    # Número CNJ explícito → ler_processo
+    achado = _CNJ_RE.search(mensagem)
+    if achado and any(t in m for t in ["ler", "resumir", "resume", "processo", "sobre o"]):
+        return "ler_processo", {"numero": achado.group(0)}
+
+    if any(t in m for t in ["briefing", "meu dia", "resumo do dia", "como está meu dia", "pauta"]):
+        return "gerar_briefing", {}
+    if any(t in m for t in ["prazo", "prazos", "vencend", "vence"]):
+        return "verificar_prazos", {}
+    if any(t in m for t in ["tese", "teses", "estratégia", "estrategia", "argumento"]):
+        return "sugerir_tese", {}
+    if achado:
+        return "ler_processo", {"numero": achado.group(0)}
     if any(t in m for t in ["processo", "processos", "casos", "meus process"]):
         params = {}
         if "encerrad" in m:

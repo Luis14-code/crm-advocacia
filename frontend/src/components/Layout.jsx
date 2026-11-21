@@ -2,10 +2,12 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../stores/auth";
 import Chat from "./Chat";
+import Notificacoes from "./Notificacoes";
 
 const MENU = [
   { to: "/", label: "Dashboard", icon: "📊", perfis: ["socio", "advogado", "estagiario", "financeiro"] },
   { to: "/processos", label: "Processos", icon: "⚖️", perfis: ["socio", "advogado", "estagiario"] },
+  { to: "/prazos", label: "Prazos", icon: "⏰", perfis: ["socio", "advogado", "estagiario"] },
 ];
 
 export default function Layout() {
@@ -58,12 +60,15 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 bg-white border-b flex items-center justify-between px-6">
           <h2 className="text-lg font-semibold text-gray-700">Escritório</h2>
-          <button
-            onClick={() => setChatAberto((v) => !v)}
-            className="text-sm text-claudio hover:underline"
-          >
-            {chatAberto ? "Fechar chat" : "Falar com o Cláudio"}
-          </button>
+          <div className="flex items-center gap-4">
+            <Notificacoes />
+            <button
+              onClick={() => setChatAberto((v) => !v)}
+              className="text-sm text-claudio hover:underline"
+            >
+              {chatAberto ? "Fechar chat" : "Falar com o Cláudio"}
+            </button>
+          </div>
         </header>
         <div className="flex-1 flex min-h-0">
           <main className="flex-1 overflow-auto p-6">

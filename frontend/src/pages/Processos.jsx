@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 
 const STATUS = [
@@ -95,7 +96,11 @@ export default function Processos() {
             ) : (
               processos.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 font-medium">{p.numero}</td>
+                  <td className="px-4 py-2 font-medium">
+                    <Link to={`/processos/${p.id}`} className="text-claudio hover:underline">
+                      {p.numero}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2">
                     {p.tipo}
                     {p.subtipo ? ` / ${p.subtipo}` : ""}

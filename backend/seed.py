@@ -9,8 +9,11 @@ from app.database import async_session_factory
 from app.models.cliente import Cliente
 from app.models.enums import Perfil
 from app.models.financeiro import ConfigHonorarios
+from app.models.movimentacao import Movimentacao
+from app.models.prazo import Prazo
 from app.models.processo import Processo
 from app.models.usuario import Usuario
+from app.services import prazos as sp
 
 SENHA_PADRAO = "claudio123"
 
@@ -64,32 +67,59 @@ async def seed() -> None:
         await db.flush()
 
         # --- Processos ---
+        proc1 = Processo(
+            numero="0001234-56.2024.8.10.0001",
+            cliente_id=cliente1.id,
+            advogado_id=advogado.id,
+            tipo="previdenciario",
+            subtipo="aposentadoria_tempo",
+            status="ativo",
+            valor_causa=150000,
+            juiz="João da Silva",
+            vara="2ª Vara Federal de Imperatriz",
+            tese_principal="Aposentadoria por tempo de contribuição com atividade especial",
+            data_distribuicao=date(2024, 2, 10),
+        )
+        proc2 = Processo(
+            numero="0007654-32.2024.8.10.0002",
+            cliente_id=cliente2.id,
+            advogado_id=advogado.id,
+            tipo="previdenciario",
+            subtipo="aux_doenca",
+            status="ativo",
+            valor_causa=45000,
+            vara="1ª Vara Federal de Imperatriz",
+            tese_principal="Auxílio-doença por incapacidade laborativa",
+            data_distribuicao=date(2024, 6, 1),
+        )
+        db.add_all([proc1, proc2])
+        await db.flush()
+
+        # --- Movimentações de exemplo ---
         db.add_all([
-            Processo(
-                numero="0001234-56.2024.8.10.0001",
-                cliente_id=cliente1.id,
-                advogado_id=advogado.id,
-                tipo="previdenciario",
-                subtipo="aposentadoria_tempo",
-                status="ativo",
-                valor_causa=150000,
-                juiz="João da Silva",
-                vara="2ª Vara Federal de Imperatriz",
-                tese_principal="Aposentadoria por tempo de contribuição com atividade especial",
-                data_distribuicao=date(2024, 2, 10),
-            ),
-            Processo(
-                numero="0007654-32.2024.8.10.0002",
-                cliente_id=cliente2.id,
-                advogado_id=advogado.id,
-                tipo="previdenciario",
-                subtipo="aux_doenca",
-                status="ativo",
-                valor_causa=45000,
-                vara="1ª Vara Federal de Imperatriz",
-                tese_principal="Auxílio-doença por incapacidade laborativa",
-                data_distribuicao=date(2024, 6, 1),
-            ),
+            Movimentacao(processo_id=proc1.id, data=date(2024, 2, 10),
+                         descricao="Distribuição por sorteio", fonte="manual", tipo="distribuicao"),
+            Movimentacao(processo_id=proc1.id, data=date(2024, 5, 3),
+                         descricao="Juntada de petição de contestação do INSS", fonte="manual", tipo="juntada"),
+            Movimentacao(processo_id=proc1.id, data=date(2024, 9, 18),
+                         descricao="Designada audiência de instrução", fonte="manual", tipo="despacho"),
+            Movimentacao(processo_id=proc2.id, data=date(2024, 6, 1),
+                         descricao="Distribuição por dependência", fonte="manual", tipo="distribuicao"),
+            Movimentacao(processo_id=proc2.id, data=date(2024, 10, 22),
+                         descricao="Intimação para manifestação sobre laudo pericial", fonte="manual", tipo="intimacao"),
+        ])
+
+        # --- Prazos de exemplo (um urgente, um na semana) ---
+        hoje = date.today()
+        limite1 = sp.adicionar_dias_uteis(hoje, 2)
+        limite2 = sp.adicionar_dias_uteis(hoje, 10)
+        db.add_all([
+            Prazo(processo_id=proc2.id, responsavel_id=advogado.id,
+                  descricao="Manifestação sobre laudo pericial",
+                  data_limite=limite1, data_limite_util=sp.data_limite_util(limite1)),
+            Prazo(processo_id=proc1.id, responsavel_id=advogado.id,
+                  descricao="Apresentar rol de testemunhas",
+                  data_limite=limite2, data_limite_util=sp.data_limite_util(limite2)),
         ])
 
         await db.commit()

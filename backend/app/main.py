@@ -4,7 +4,18 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat_ws, clientes, processos, usuarios
+from app.api import (
+    auth,
+    briefing,
+    chat_ws,
+    clientes,
+    movimentacoes,
+    notificacoes,
+    prazos,
+    processos,
+    sync_api,
+    usuarios,
+)
 from app.config import settings
 
 logging.basicConfig(level=settings.log_level)
@@ -33,4 +44,9 @@ app.include_router(auth.router)
 app.include_router(usuarios.router)
 app.include_router(clientes.router)
 app.include_router(processos.router)
+app.include_router(movimentacoes.router)
+app.include_router(prazos.router)
+app.include_router(briefing.router)
+app.include_router(notificacoes.router)
+app.include_router(sync_api.router)
 app.include_router(chat_ws.router)
