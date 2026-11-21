@@ -87,7 +87,12 @@ scripts/   backup, utilidades
 ## Roadmap
 
 - **Fase 1 ✅** Fundação: infra, auth, CRUD, agente (3 plugins)
-- **Fase 2** Inteligência jurídica: DataJud/JusBrasil, briefing matinal, prazos
-- **Fase 3** Reuniões (Whisper) e geração de peças
-- **Fase 4** Financeiro (senha sensível) e WhatsApp (WAHA)
-- **Fase 5** Dashboard do dono, jurimetria e aprendizado contínuo
+- **Fase 2 ✅** Inteligência jurídica: DataJud/JusBrasil, briefing matinal, prazos
+- **Fase 3 ✅** Reuniões (Whisper), RAG e geração de peças (PDF)
+- **Fase 4 ✅** Financeiro (senha sensível), conciliação bancária e WhatsApp (WA-AKG)
+- **Fase 5 ✅** Dashboard do dono, jurimetria, mural e aprendizado contínuo
+
+Documentação: [RUNBOOK](docs/RUNBOOK.md) (operação) · [DEPLOY](docs/DEPLOY.md) (produção).
+
+> Pós-roadmap (débitos técnicos): boleto com gateway real, Open Finance direto do banco,
+> CI/CD, observabilidade (Loki/Grafana).

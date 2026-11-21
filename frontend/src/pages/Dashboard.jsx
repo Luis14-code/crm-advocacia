@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../stores/auth";
+import Mural from "../components/Mural";
 
 function BlocoBriefing({ titulo, cor, itens }) {
   if (!itens || itens.length === 0) return null;
@@ -49,6 +50,8 @@ export default function Dashboard() {
       <p className="text-gray-500 mb-6">Aqui está um panorama do seu dia.</p>
 
       {erro && <p className="text-red-600 mb-4">{erro}</p>}
+
+      <Mural />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {cards.map((c) => (

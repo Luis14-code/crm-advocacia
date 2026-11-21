@@ -79,6 +79,8 @@ async def atualizar(
         prazo.data_limite_util = sp.data_limite_util(dados["data_limite"])
     if "status" in dados and dados["status"]:
         prazo.status = dados["status"]
+        if dados["status"] in ("cumprido", "perdido"):
+            prazo.data_conclusao = date.today()
     if "descricao" in dados and dados["descricao"]:
         prazo.descricao = dados["descricao"]
     await db.flush()

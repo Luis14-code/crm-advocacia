@@ -5,14 +5,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    aprendizado,
     auth,
     briefing,
     chat_ws,
     clientes,
     config_api,
     documentos,
+    dono,
     financeiro,
     movimentacoes,
+    mural,
     notificacoes,
     pagamentos_api,
     prazos,
@@ -61,4 +64,7 @@ app.include_router(documentos.router)
 app.include_router(financeiro.router)
 app.include_router(whatsapp_api.router)
 app.include_router(pagamentos_api.router)
+app.include_router(dono.router)
+app.include_router(mural.router)
+app.include_router(aprendizado.router)
 app.include_router(chat_ws.router)

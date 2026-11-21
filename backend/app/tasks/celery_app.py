@@ -13,6 +13,7 @@ celery_app = Celery(
         "app.tasks.briefing_tasks",
         "app.tasks.transcricao_tasks",
         "app.tasks.whatsapp_tasks",
+        "app.tasks.aprendizado_tasks",
     ],
 )
 
@@ -36,6 +37,10 @@ celery_app.conf.beat_schedule = {
     "briefing-matinal-7h": {
         "task": "claudio.gerar_briefings",
         "schedule": crontab(minute=0, hour=7),
+    },
+    "ciclo-aprendizado-2h": {
+        "task": "claudio.ciclo_aprendizado",
+        "schedule": crontab(minute=0, hour="*/2"),
     },
 }
 

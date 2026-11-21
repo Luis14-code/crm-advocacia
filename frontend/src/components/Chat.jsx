@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { wsUrl } from "../lib/api";
+import { wsUrl, api } from "../lib/api";
 
 export default function Chat() {
   const [mensagens, setMensagens] = useState([
@@ -7,8 +7,26 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState("");
   const [conectado, setConectado] = useState(false);
+  const [feedbackDado, setFeedbackDado] = useState({});
   const wsRef = useRef(null);
   const fimRef = useRef(null);
+
+  async function enviarFeedback(idx, util, texto) {
+    let correcao = null;
+    if (util === false && texto === "corrigir") {
+      correcao = window.prompt("O que deveria ser diferente?");
+      if (!correcao) return;
+    }
+    try {
+      await api("/api/feedback", {
+        method: "POST",
+        body: { contexto: "chat", sugestao: mensagens[idx]?.texto?.slice(0, 500), util, correcao },
+      });
+      setFeedbackDado((f) => ({ ...f, [idx]: correcao ? "corrigido" : util ? "util" : "nao" }));
+    } catch {
+      /* ignora */
+    }
+  }
 
   useEffect(() => {
     const ws = new WebSocket(wsUrl());
@@ -47,7 +65,7 @@ export default function Chat() {
 
       <div className="flex-1 overflow-auto p-4 space-y-3">
         {mensagens.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
             <div
               className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
                 m.role === "user" ? "bg-claudio text-white" : "bg-gray-100 text-gray-800"
@@ -55,6 +73,19 @@ export default function Chat() {
             >
               {m.texto}
             </div>
+            {m.role === "assistant" && i > 0 && (
+              <div className="flex gap-2 mt-1 text-xs text-gray-400">
+                {feedbackDado[i] ? (
+                  <span>Obrigado pelo retorno!</span>
+                ) : (
+                  <>
+                    <button onClick={() => enviarFeedback(i, true)} title="Útil">👍</button>
+                    <button onClick={() => enviarFeedback(i, false)} title="Não útil">👎</button>
+                    <button onClick={() => enviarFeedback(i, false, "corrigir")} title="Corrigir">✏️</button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ))}
         <div ref={fimRef} />

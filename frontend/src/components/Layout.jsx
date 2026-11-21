@@ -12,6 +12,7 @@ const MENU = [
   { to: "/pecas", label: "Peças", icon: "📄", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/whatsapp", label: "WhatsApp", icon: "📱", perfis: ["socio", "advogado", "financeiro"] },
   { to: "/financeiro", label: "Financeiro", icon: "💰", perfis: ["socio", "financeiro"] },
+  { to: "/dono", label: "Dashboard do Dono", icon: "👑", perfis: ["socio"] },
   { to: "/configuracoes", label: "Configurações", icon: "⚙️", perfis: ["socio"] },
 ];
 

@@ -16,6 +16,7 @@ class Prazo(Base):
     data_limite: Mapped[date] = mapped_column(Date, nullable=False)
     data_limite_util: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pendente")
+    data_conclusao: Mapped[date | None] = mapped_column(Date)  # quando foi cumprido/perdido
     alerta_enviado: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

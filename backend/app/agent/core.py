@@ -50,6 +50,9 @@ def _roteamento_heuristico(mensagem: str) -> tuple[str, dict] | None:
         return "consultar_reuniao", {"pergunta": mensagem}
     if any(t in m for t in ["transcri", "reunião", "reuniao", "gravação", "gravacao"]):
         return "transcrever_reuniao", {}
+    # Panorama executivo
+    if any(t in m for t in ["como estamos", "como está o escritório", "como esta o escritorio", "panorama", "como vamos", "visão geral"]):
+        return "como_estamos", {}
     # WhatsApp
     if any(t in m for t in ["whatsapp", "zap", "mensagem para o cliente", "avisar o cliente", "mandar mensagem"]):
         return "enviar_whatsapp", {}

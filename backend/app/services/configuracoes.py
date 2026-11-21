@@ -24,6 +24,7 @@ WHATSAPP_AUTO_ENVIO = "whatsapp_auto_envio"  # "true"/"false" — gatilhos saem 
 PAGAMENTOS_PROVEDOR = "pagamentos_provedor"   # asaas | paghiper | manual
 PAGAMENTOS_API_KEY = "pagamentos_api_key"
 PAGAMENTOS_BASE_URL = "pagamentos_base_url"
+META_FATURAMENTO = "meta_faturamento_mensal"
 
 # Metadados das chaves expostas na UI (quais são secretas)
 CHAVES_SECRETAS = {DATAJUD_API_KEY, JUSBRASIL_DEFAULT_TOKEN, WAAKG_API_KEY, PAGAMENTOS_API_KEY}
@@ -96,6 +97,14 @@ async def get_whatsapp_auto_envio(db: AsyncSession) -> bool:
     if valor is None:
         return True
     return valor.lower() in ("1", "true", "sim", "on")
+
+
+async def get_meta_faturamento(db: AsyncSession) -> float:
+    valor = await obter(db, META_FATURAMENTO)
+    try:
+        return float(valor) if valor else 0.0
+    except ValueError:
+        return 0.0
 
 
 async def get_pagamentos_config(db: AsyncSession) -> dict:

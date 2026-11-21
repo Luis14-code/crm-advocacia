@@ -11,6 +11,7 @@ import ReuniaoDetalhe from "./pages/ReuniaoDetalhe";
 import Pecas from "./pages/Pecas";
 import Financeiro from "./pages/Financeiro";
 import Whatsapp from "./pages/Whatsapp";
+import Dono from "./pages/Dono";
 import Configuracoes from "./pages/Configuracoes";
 
 function Protegido({ children }) {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="pecas" element={<Pecas />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="whatsapp" element={<Whatsapp />} />
+        <Route path="dono" element={<Dono />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
