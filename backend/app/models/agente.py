@@ -81,6 +81,7 @@ class Reuniao(Base):
     cliente_id: Mapped[int | None] = mapped_column(ForeignKey("clientes.id"))
     processo_id: Mapped[int | None] = mapped_column(ForeignKey("processos.id"))
     advogado_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    status: Mapped[str] = mapped_column(String(20), default="pendente")  # pendente|transcrevendo|concluido|erro
     duracao_segundos: Mapped[int | None] = mapped_column(Integer)
     audio_path: Mapped[str | None] = mapped_column(String(500))
     transcricao: Mapped[str | None] = mapped_column(Text)

@@ -11,6 +11,7 @@ celery_app = Celery(
     include=[
         "app.tasks.sync_tasks",
         "app.tasks.briefing_tasks",
+        "app.tasks.transcricao_tasks",
     ],
 )
 
@@ -20,6 +21,9 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="America/Sao_Paulo",
     enable_utc=True,
+    # Transcrição vai para a fila dedicada 'whisper' (consumida pelo whisper-worker).
+    task_routes={"claudio.transcrever_reuniao": {"queue": "whisper"}},
+    task_default_queue="celery",
 )
 
 # Agendamento (Seção 5): sync a cada 4h; briefing matinal às 7h BRT.

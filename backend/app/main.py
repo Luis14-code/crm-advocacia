@@ -10,10 +10,12 @@ from app.api import (
     chat_ws,
     clientes,
     config_api,
+    documentos,
     movimentacoes,
     notificacoes,
     prazos,
     processos,
+    reunioes,
     sync_api,
     usuarios,
 )
@@ -51,4 +53,6 @@ app.include_router(briefing.router)
 app.include_router(notificacoes.router)
 app.include_router(sync_api.router)
 app.include_router(config_api.router)
+app.include_router(reunioes.router)
+app.include_router(documentos.router)
 app.include_router(chat_ws.router)

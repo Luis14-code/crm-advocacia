@@ -32,6 +32,16 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1:8b"
     ollama_timeout: int = 120
 
+    # Whisper (transcrição)
+    whisper_model: str = "tiny"       # tiny para dev; medium em produção
+    whisper_device: str = "cpu"       # cpu | cuda
+    whisper_language: str = "pt"
+    whisper_compute_type: str = "int8"  # int8 (cpu) | float16 (gpu)
+
+    # Uploads
+    upload_dir: str = "/app/uploads"
+    max_upload_mb: int = 200
+
     # Celery
     celery_broker_url: str = "redis://redis:6379/0"
     celery_result_backend: str = "redis://redis:6379/0"

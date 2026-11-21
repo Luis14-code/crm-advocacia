@@ -1,0 +1,3 @@
+# Dependências exclusivas do whisper-worker (transcrição).
+# Instaladas em uma imagem separada para não pesar o backend principal.
+faster-whisper==1.1.0

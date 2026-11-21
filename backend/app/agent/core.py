@@ -38,6 +38,18 @@ def _roteamento_heuristico(mensagem: str) -> tuple[str, dict] | None:
         return "gerar_briefing", {}
     if any(t in m for t in ["prazo", "prazos", "vencend", "vence"]):
         return "verificar_prazos", {}
+    # Peças/documentos
+    if any(t in m for t in ["gerar peça", "gerar peca", "petição inicial", "peticao inicial", "contestação", "contestacao", "minuta", "gerar recurso"]):
+        return "gerar_peca", {}
+    if any(t in m for t in ["revisar", "revisão", "revisao"]) and any(t in m for t in ["peça", "peca", "documento", "minuta"]):
+        return "revisar_documento", {}
+    # Reuniões
+    if any(t in m for t in ["disse", "falou", "mencionou", "comentou", "relatou"]) and any(
+        t in m for t in ["reunião", "reuniao", "cliente"]
+    ):
+        return "consultar_reuniao", {"pergunta": mensagem}
+    if any(t in m for t in ["transcri", "reunião", "reuniao", "gravação", "gravacao"]):
+        return "transcrever_reuniao", {}
     if any(t in m for t in ["tese", "teses", "estratégia", "estrategia", "argumento"]):
         return "sugerir_tese", {}
     if achado:

@@ -6,6 +6,9 @@ import Dashboard from "./pages/Dashboard";
 import Processos from "./pages/Processos";
 import ProcessoDetalhe from "./pages/ProcessoDetalhe";
 import Prazos from "./pages/Prazos";
+import Reunioes from "./pages/Reunioes";
+import ReuniaoDetalhe from "./pages/ReuniaoDetalhe";
+import Pecas from "./pages/Pecas";
 import Configuracoes from "./pages/Configuracoes";
 
 function Protegido({ children }) {
@@ -30,6 +33,9 @@ export default function App() {
         <Route path="processos" element={<Processos />} />
         <Route path="processos/:id" element={<ProcessoDetalhe />} />
         <Route path="prazos" element={<Prazos />} />
+        <Route path="reunioes" element={<Reunioes />} />
+        <Route path="reunioes/:id" element={<ReuniaoDetalhe />} />
+        <Route path="pecas" element={<Pecas />} />
         <Route path="configuracoes" element={<Configuracoes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

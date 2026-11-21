@@ -69,4 +69,27 @@ export function wsUrl() {
   return `${base}/ws/chat?token=${access}`;
 }
 
+// URL autenticada por token na query (para <audio>/<img> que não mandam header)
+export function authedUrl(path) {
+  const { access } = getTokens();
+  const sep = path.includes("?") ? "&" : "?";
+  return `${API_URL}${path}${sep}token=${access}`;
+}
+
+// Baixa um arquivo (ex: PDF) respeitando o Authorization e dispara o download.
+export async function baixarArquivo(path, nomeArquivo) {
+  const { access } = getTokens();
+  const resp = await fetch(`${API_URL}${path}`, {
+    headers: access ? { Authorization: `Bearer ${access}` } : {},
+  });
+  if (!resp.ok) throw new Error("Falha ao baixar arquivo");
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export { API_URL };

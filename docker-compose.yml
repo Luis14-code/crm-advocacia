@@ -91,7 +91,29 @@ services:
     depends_on:
       - backend
       - redis
-    command: celery -A app.tasks.celery_app worker --beat --loglevel=info
+    # Consome a fila padrão ('celery') + beat (sync, briefing). Transcrição vai p/ 'whisper'.
+    command: celery -A app.tasks.celery_app worker --beat -Q celery --loglevel=info
+    profiles: [dev, prod]
+
+  whisper-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.whisper
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      WHISPER_MODEL: ${WHISPER_MODEL:-tiny}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-pt}
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+      - whispermodels:/root/.cache/huggingface
+    depends_on:
+      - redis
+      - db
+    command: celery -A app.tasks.celery_app worker -Q whisper --loglevel=info
     profiles: [dev, prod]
 
   frontend:
@@ -152,3 +174,4 @@ volumes:
   caddyconfig:
   ollamadata:
   wahadata:
+  whispermodels:
