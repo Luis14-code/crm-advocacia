@@ -1,0 +1,154 @@
+# ============================================================
+# Projeto Cláudio — orquestração de serviços
+#   dev:  docker compose --profile dev up -d
+#   prod: docker compose --profile prod up -d
+# ============================================================
+name: claudio
+
+x-common-env: &common-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  JWT_SECRET: ${JWT_SECRET}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+  REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+  SENSITIVE_TOKEN_EXPIRE_MINUTES: ${SENSITIVE_TOKEN_EXPIRE_MINUTES:-30}
+  SENSITIVE_PASSWORD_HASH: ${SENSITIVE_PASSWORD_HASH:-}
+  FERNET_KEY: ${FERNET_KEY:-}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+  OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-120}
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+  CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
+  WAHA_URL: ${WAHA_URL:-http://waha:3000}
+  WAHA_API_KEY: ${WAHA_API_KEY:-}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-claudio}
+      POSTGRES_USER: ${POSTGRES_USER:-claudio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-claudio}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-claudio}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: [dev, prod]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-claudio}
+    volumes:
+      - redisdata:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-claudio}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    profiles: [dev, prod]
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    profiles: [dev, prod]
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    volumes:
+      - ./backend:/app
+      - uploads:/app/uploads
+    depends_on:
+      - backend
+      - redis
+    command: celery -A app.tasks.celery_app worker --beat --loglevel=info
+    profiles: [dev, prod]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: ${FRONTEND_TARGET:-dev}
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "127.0.0.1:5173:5173"
+    command: npm run dev -- --host 0.0.0.0
+    profiles: [dev]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - backend
+    profiles: [prod]
+
+  # --- Opcionais (ligar conforme necessidade/hardware) ---
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollamadata:/root/.ollama
+    ports:
+      - "127.0.0.1:11434:11434"
+    profiles: [llm]
+
+  waha:
+    image: devlikeapro/waha:latest
+    restart: unless-stopped
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WHATSAPP_HOOK_URL: ${WAHA_WEBHOOK_URL:-}
+      WHATSAPP_HOOK_EVENTS: message
+    volumes:
+      - wahadata:/app/.sessions
+    profiles: [whatsapp]
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  caddydata:
+  caddyconfig:
+  ollamadata:
+  wahadata:

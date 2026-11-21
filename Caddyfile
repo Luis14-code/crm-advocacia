@@ -1,0 +1,24 @@
+# Reverse proxy para produção.
+# Em rede local, Caddy gera certificado interno auto-assinado.
+# Para acesso público, troque {$DOMAIN} por seu domínio real (TLS via Let's Encrypt automático).
+
+{$DOMAIN:localhost} {
+	# API + WebSocket
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /ws* {
+		reverse_proxy backend:8000
+	}
+
+	# Frontend (build estático servido pelo container frontend em prod)
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	encode gzip
+	log {
+		output stdout
+		format console
+	}
+}

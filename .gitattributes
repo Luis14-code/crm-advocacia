@@ -1,0 +1,11 @@
+# Força LF em todo código/texto — containers rodam Linux.
+* text=auto eol=lf
+
+# Binários (não normalizar)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
