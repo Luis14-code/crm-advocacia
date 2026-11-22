@@ -9,6 +9,7 @@ const MENU = [
   { to: "/clientes", label: "Clientes", icon: "👥", perfis: ["socio", "advogado", "estagiario", "financeiro"] },
   { to: "/processos", label: "Processos", icon: "⚖️", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/prazos", label: "Prazos", icon: "⏰", perfis: ["socio", "advogado", "estagiario"] },
+  { to: "/analise", label: "Análise do dia", icon: "🔎", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/reunioes", label: "Reuniões", icon: "🎙️", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/pecas", label: "Peças", icon: "📄", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/whatsapp", label: "WhatsApp", icon: "📱", perfis: ["socio", "advogado", "financeiro"] },

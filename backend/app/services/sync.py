@@ -111,9 +111,34 @@ async def sincronizar_processo(
         processo.vara = meta["orgao_julgador"]
     processo.meta = {**(processo.meta or {}), "datajud": meta}
 
-    existentes = await _chaves_existentes(db, processo.id)
     movimentacoes = datajud.extrair_movimentacoes(source)
+    novas, prazos_criados = await _ingerir_movimentacoes(
+        db, processo, movimentacoes, fonte="datajud", criar_notificacoes=criar_notificacoes
+    )
 
+    resultado["novas"] = novas
+    resultado["prazos"] = prazos_criados
+    return resultado
+
+
+async def _ingerir_movimentacoes(
+    db: AsyncSession,
+    processo: Processo,
+    movimentacoes: list[dict],
+    fonte: str,
+    criar_notificacoes: bool = True,
+) -> tuple[int, int]:
+    """Pipeline único de ingestão de andamentos (DataJud e JusBrasil).
+
+    Para cada movimentação NOVA (dedup por data+descrição):
+      - grava a movimentação;
+      - avisa o advogado (notificação);
+      - detecta prazo a partir de movimentação-gatilho (intimação, sentença…);
+    e, ao final, se houve novidade, dispara a mensagem automática ao cliente no
+    WhatsApp (a IA traduz o andamento). Assim, QUALQUER fonte de andamento produz
+    os mesmos efeitos. Retorna (novas, prazos_criados).
+    """
+    existentes = await _chaves_existentes(db, processo.id)
     novas = 0
     prazos_criados = 0
     ultima_nova_desc: str | None = None
@@ -122,12 +147,13 @@ async def sincronizar_processo(
         chave = (data_mov.isoformat() if data_mov else None, mov["descricao"])
         if chave in existentes:
             continue
+        existentes.add(chave)  # evita duplicar dentro do próprio lote
         db.add(
             Movimentacao(
                 processo_id=processo.id,
                 data=data_mov or date.today(),
                 descricao=mov["descricao"],
-                fonte="datajud",
+                fonte=fonte,
                 tipo=mov.get("tipo"),
                 dados_brutos=mov.get("dados_brutos"),
             )
@@ -136,7 +162,7 @@ async def sincronizar_processo(
         if ultima_nova_desc is None:
             ultima_nova_desc = mov["descricao"]
 
-        # Notificação da nova movimentação
+        # Aviso ao advogado
         if criar_notificacoes and processo.advogado_id:
             db.add(
                 Notificacao(
@@ -178,31 +204,21 @@ async def sincronizar_processo(
                 processo_id=processo.id, usuario_id=processo.advogado_id,
             )
 
-    resultado["novas"] = novas
-    resultado["prazos"] = prazos_criados
-    return resultado
+    return novas, prazos_criados
 
 
 async def sincronizar_movimentacoes_externas(
     db: AsyncSession, processo: Processo, movimentacoes: list[dict], fonte: str = "jusbrasil"
 ) -> dict:
-    """Upsert de movimentações vindas de fonte externa (userscript JusBrasil)."""
-    existentes = await _chaves_existentes(db, processo.id)
-    novas = 0
-    for mov in movimentacoes:
-        data_mov = _parse_data(mov.get("data"))
-        chave = (data_mov.isoformat() if data_mov else None, mov["descricao"])
-        if chave in existentes:
-            continue
-        db.add(
-            Movimentacao(
-                processo_id=processo.id,
-                data=data_mov or date.today(),
-                descricao=mov["descricao"],
-                fonte=fonte,
-                tipo=mov.get("tipo"),
-                dados_brutos=mov.get("dados_brutos"),
-            )
-        )
-        novas += 1
-    return {"processo": processo.numero, "novas": novas, "fonte": fonte}
+    """Upsert de movimentações de fonte externa (userscript JusBrasil).
+
+    Passa pelo MESMO pipeline do DataJud (_ingerir_movimentacoes): detecta prazos,
+    avisa o advogado e dispara a mensagem automática ao cliente. As movimentações
+    são ordenadas por data (mais recente primeiro) para que o aviso ao cliente use
+    o andamento mais novo.
+    """
+    movimentacoes = sorted(movimentacoes, key=lambda m: m.get("data") or "", reverse=True)
+    novas, prazos = await _ingerir_movimentacoes(
+        db, processo, movimentacoes, fonte=fonte, criar_notificacoes=True
+    )
+    return {"processo": processo.numero, "novas": novas, "prazos": prazos, "fonte": fonte}

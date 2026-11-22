@@ -18,8 +18,10 @@ logger = logging.getLogger("claudio.datajud")
 BASE_URL = "https://api-publica.datajud.cnj.jus.br"
 
 # API key pública divulgada pelo CNJ (fallback quando DATAJUD_API_KEY não é definida).
+# O CNJ rotaciona esta chave periodicamente; a vigente fica em
+# https://datajud-wiki.cnj.jus.br/api-publica/acesso (atualizada em 2026-11-22).
 DEFAULT_PUBLIC_KEY = (
-    "cDZHYzlZa0JadVREZDJjYnJaUDI6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
+    "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
 )
 
 # Mapa de códigos de TR (justiça federal, segmento J=4) -> alias TRF.
@@ -111,20 +113,28 @@ async def buscar_processo(numero: str, api_key: str | None = None) -> dict | Non
 
 
 async def testar_conexao(api_key: str | None = None) -> tuple[bool, str]:
-    """Testa a autenticação na API do DataJud (consulta leve no TRF1). (ok, detalhe)."""
+    """Testa a autenticação na API do DataJud. (ok, detalhe).
+
+    Usa uma consulta leve (match por número inexistente, size 0) — o `match_all`
+    sobrecarrega o índice e volta 429. Um 429 significa que a *chave foi aceita*,
+    só que o servidor estava ocupado; por isso é tratado como sucesso.
+    """
     url = f"{BASE_URL}/api_publica_trf1/_search"
     chave = api_key or _api_key()
     headers = {"Authorization": f"APIKey {chave}", "Content-Type": "application/json"}
+    corpo = {"query": {"match": {"numeroProcesso": "00000000000000000000"}}, "size": 0}
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(url, headers=headers, json={"query": {"match_all": {}}, "size": 0})
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, headers=headers, json=corpo)
         if resp.status_code == 200:
             return True, "Conexão OK — chave aceita pelo DataJud."
         if resp.status_code in (401, 403):
             return False, "Chave rejeitada (401/403). Verifique a API key."
+        if resp.status_code == 429:
+            return True, "Chave aceita — DataJud ocupado no momento (429). Tente de novo em instantes."
         return False, f"Resposta inesperada do DataJud: HTTP {resp.status_code}."
     except httpx.HTTPError as exc:
-        return False, f"Falha de conexão: {exc}"
+        return False, f"Falha de conexão: {exc or 'tempo esgotado'}"
 
 
 def extrair_movimentacoes(source: dict) -> list[dict]:

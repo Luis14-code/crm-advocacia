@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    analise_api,
     aprendizado,
     auth,
     briefing,
@@ -67,4 +68,5 @@ app.include_router(pagamentos_api.router)
 app.include_router(dono.router)
 app.include_router(mural.router)
 app.include_router(aprendizado.router)
+app.include_router(analise_api.router)
 app.include_router(chat_ws.router)

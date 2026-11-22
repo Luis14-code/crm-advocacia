@@ -7,6 +7,7 @@ import Processos from "./pages/Processos";
 import ProcessoDetalhe from "./pages/ProcessoDetalhe";
 import Clientes from "./pages/Clientes";
 import Prazos from "./pages/Prazos";
+import Analise from "./pages/Analise";
 import Reunioes from "./pages/Reunioes";
 import ReuniaoDetalhe from "./pages/ReuniaoDetalhe";
 import Pecas from "./pages/Pecas";
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="processos" element={<Processos />} />
         <Route path="processos/:id" element={<ProcessoDetalhe />} />
         <Route path="prazos" element={<Prazos />} />
+        <Route path="analise" element={<Analise />} />
         <Route path="reunioes" element={<Reunioes />} />
         <Route path="reunioes/:id" element={<ReuniaoDetalhe />} />
         <Route path="pecas" element={<Pecas />} />
