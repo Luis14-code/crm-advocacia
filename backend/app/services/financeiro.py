@@ -188,6 +188,154 @@ async def dashboard(db: AsyncSession) -> dict:
     }
 
 
+async def dre(db: AsyncSession, inicio: date, fim: date) -> dict:
+    """Demonstrativo de Resultados: receitas e despesas por categoria + resultado."""
+    rows = (
+        await db.execute(
+            select(Transacao.tipo, Transacao.categoria, func.coalesce(func.sum(Transacao.valor), 0))
+            .where(Transacao.status == "pago", Transacao.data_pagamento >= inicio, Transacao.data_pagamento <= fim)
+            .group_by(Transacao.tipo, Transacao.categoria)
+        )
+    ).all()
+    receitas = [{"categoria": c or "outros", "valor": float(_q(v))} for t, c, v in rows if t == "entrada"]
+    despesas = [{"categoria": c or "outros", "valor": float(_q(v))} for t, c, v in rows if t == "saida"]
+    total_receitas = _q(sum(r["valor"] for r in receitas))
+    total_despesas = _q(sum(d["valor"] for d in despesas))
+    resultado = _q(total_receitas - total_despesas)
+    return {
+        "periodo": {"inicio": inicio.isoformat(), "fim": fim.isoformat()},
+        "receitas": sorted(receitas, key=lambda x: x["valor"], reverse=True),
+        "despesas": sorted(despesas, key=lambda x: x["valor"], reverse=True),
+        "total_receitas": float(total_receitas),
+        "total_despesas": float(total_despesas),
+        "resultado": float(resultado),
+        "margem": round(100 * float(resultado) / float(total_receitas)) if total_receitas else None,
+    }
+
+
+async def graficos(db: AsyncSession) -> dict:
+    """Dados para os gráficos do dashboard (faturamento mensal, boletos, categorias)."""
+    hoje = date.today()
+
+    # Faturamento mensal (últimos 6 meses)
+    faturamento = []
+    ref = hoje.replace(day=1)
+    meses = []
+    for _ in range(6):
+        meses.append(ref)
+        ref = (ref - timedelta(days=1)).replace(day=1)
+    for ini in reversed(meses):
+        prox = (ini + timedelta(days=32)).replace(day=1)
+        v = (
+            await db.execute(
+                select(func.coalesce(func.sum(Transacao.valor), 0)).where(
+                    Transacao.status == "pago", Transacao.tipo == "entrada",
+                    Transacao.data_pagamento >= ini, Transacao.data_pagamento < prox,
+                )
+            )
+        ).scalar_one()
+        faturamento.append({"mes": ini.strftime("%m/%Y"), "valor": float(_q(v))})
+
+    # Boletos por status (pago, pendente, vencido)
+    boletos = {}
+    for st in ("pago", "pendente", "vencido"):
+        row = (
+            await db.execute(
+                select(func.count(), func.coalesce(func.sum(Transacao.valor), 0)).where(
+                    Transacao.categoria == "boleto", Transacao.status == st
+                )
+            )
+        ).first()
+        boletos[st] = {"qtd": row[0], "valor": float(_q(row[1]))}
+
+    # Receitas/despesas por categoria (mês atual)
+    inicio_mes = hoje.replace(day=1)
+    cat_rows = (
+        await db.execute(
+            select(Transacao.tipo, Transacao.categoria, func.coalesce(func.sum(Transacao.valor), 0))
+            .where(Transacao.status == "pago", Transacao.data_pagamento >= inicio_mes)
+            .group_by(Transacao.tipo, Transacao.categoria)
+        )
+    ).all()
+    receitas_cat = [{"categoria": c or "outros", "valor": float(_q(v))} for t, c, v in cat_rows if t == "entrada"]
+    despesas_cat = [{"categoria": c or "outros", "valor": float(_q(v))} for t, c, v in cat_rows if t == "saida"]
+
+    return {
+        "faturamento_mensal": faturamento,
+        "boletos": boletos,
+        "receitas_categoria": receitas_cat,
+        "despesas_categoria": despesas_cat,
+    }
+
+
+async def marcar_vencidos(db: AsyncSession) -> int:
+    """Marca como 'vencido' as entradas pendentes com vencimento passado."""
+    from sqlalchemy import update
+
+    hoje = date.today()
+    res = await db.execute(
+        update(Transacao)
+        .where(
+            Transacao.status == "pendente",
+            Transacao.tipo == "entrada",
+            Transacao.data_vencimento < hoje,
+        )
+        .values(status="vencido")
+    )
+    return res.rowcount or 0
+
+
+def _proximo_mes(d: date, dia: int) -> date:
+    """Retorna o mesmo 'dia' no mês seguinte a d."""
+    ano = d.year + (1 if d.month == 12 else 0)
+    mes = 1 if d.month == 12 else d.month + 1
+    return date(ano, mes, min(dia, 28))
+
+
+async def processar_cobrancas(db: AsyncSession) -> dict:
+    """Gera boletos das cobranças programadas vencidas e dispara WhatsApp."""
+    from app.models.cliente import Cliente
+    from app.models.cobranca import CobrancaProgramada
+    from app.services import whatsapp as wsvc
+
+    hoje = date.today()
+    cobrancas = (
+        await db.execute(
+            select(CobrancaProgramada).where(
+                CobrancaProgramada.ativo.is_(True), CobrancaProgramada.proxima_data <= hoje
+            )
+        )
+    ).scalars().all()
+
+    gerados = 0
+    for cob in cobrancas:
+        transacao = await gerar_boleto(
+            db, cob.cliente_id, Decimal(str(cob.valor)), cob.proxima_data,
+            processo_id=cob.processo_id, descricao=cob.descricao or "Cobrança recorrente",
+        )
+        gerados += 1
+        cob.ultima_geracao = hoje
+
+        if cob.enviar_whatsapp:
+            cliente = await db.get(Cliente, cob.cliente_id)
+            if cliente and cliente.telefone and not cliente.whatsapp_opt_out:
+                texto = wsvc.render_template(
+                    "boleto",
+                    {"nome": cliente.nome.split()[0], "valor": f"{float(cob.valor):.2f}",
+                     "data": cob.proxima_data.strftime("%d/%m/%Y")},
+                )
+                if transacao.boleto_url:
+                    texto += f"\n{transacao.boleto_url}"
+                await wsvc.disparar(db, cliente, texto, gatilho="boleto", processo_id=cob.processo_id)
+
+        if cob.recorrencia == "mensal":
+            cob.proxima_data = _proximo_mes(cob.proxima_data, cob.dia_vencimento)
+        else:
+            cob.ativo = False
+
+    return {"gerados": gerados}
+
+
 async def gerar_boleto(
     db: AsyncSession, cliente_id: int, valor: Decimal, vencimento: date,
     processo_id: int | None = None, descricao: str | None = None,

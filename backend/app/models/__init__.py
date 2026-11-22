@@ -8,6 +8,7 @@ from app.models.agente import (
     ResultadoCaso,
 )
 from app.models.cliente import Cliente
+from app.models.cobranca import CobrancaProgramada
 from app.models.configuracao import Configuracao
 from app.models.documento import Documento
 from app.models.financeiro import ConfigHonorarios, Transacao
@@ -21,6 +22,7 @@ from app.models.whatsapp import MensagemWhatsapp
 __all__ = [
     "Usuario",
     "Cliente",
+    "CobrancaProgramada",
     "Configuracao",
     "Processo",
     "Movimentacao",

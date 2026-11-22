@@ -59,3 +59,42 @@ class GerarBoletoRequest(BaseModel):
     vencimento: date
     descricao: str | None = None
     enviar_whatsapp: bool = False
+
+
+class CobrancaCreate(BaseModel):
+    cliente_id: int
+    processo_id: int | None = None
+    descricao: str | None = None
+    valor: Decimal = Field(gt=0)
+    recorrencia: str = "mensal"  # mensal | unica
+    dia_vencimento: int = Field(default=10, ge=1, le=28)
+    proxima_data: date | None = None
+    enviar_whatsapp: bool = True
+    ativo: bool = True
+
+
+class CobrancaUpdate(BaseModel):
+    descricao: str | None = None
+    valor: Decimal | None = None
+    recorrencia: str | None = None
+    dia_vencimento: int | None = Field(default=None, ge=1, le=28)
+    proxima_data: date | None = None
+    enviar_whatsapp: bool | None = None
+    ativo: bool | None = None
+
+
+class CobrancaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    cliente_id: int
+    cliente_nome: str | None = None
+    processo_id: int | None = None
+    descricao: str | None = None
+    valor: Decimal
+    recorrencia: str
+    dia_vencimento: int
+    proxima_data: date
+    enviar_whatsapp: bool
+    ativo: bool
+    ultima_geracao: date | None = None

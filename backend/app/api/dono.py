@@ -1,12 +1,13 @@
 """Dashboard do Dono — exige perfil sócio + token sensível."""
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_sensitive
-from app.core.cache import cached_json
+from app.core.cache import cached_json, invalidar
 from app.database import get_db
 from app.models.enums import Perfil
 from app.models.usuario import Usuario
+from app.services import configuracoes as cfg
 from app.services import dono, jurimetria
 
 router = APIRouter(prefix="/api/dono", tags=["dono"])
@@ -50,3 +51,22 @@ async def relatorio(
     _: Usuario = Depends(acesso_dono),
 ):
     return await jurimetria.relatorio_advogado(db, advogado_id)
+
+
+@router.get("/meta")
+async def obter_meta(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_dono)
+):
+    return {"meta_faturamento_mensal": await cfg.get_meta_faturamento(db)}
+
+
+@router.put("/meta")
+async def definir_meta(
+    valor: float = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_dono),
+):
+    await cfg.definir(db, cfg.META_FATURAMENTO, str(valor), descricao="Meta de faturamento mensal")
+    await db.flush()
+    await invalidar("dono:")  # invalida o cache do dashboard
+    return {"meta_faturamento_mensal": valor}

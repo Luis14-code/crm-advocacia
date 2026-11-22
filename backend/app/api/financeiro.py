@@ -22,10 +22,14 @@ from app.api.deps import require_sensitive
 from app.core.security import decodificar_token
 from app.database import async_session_factory, get_db
 from app.models.cliente import Cliente
+from app.models.cobranca import CobrancaProgramada
 from app.models.financeiro import Transacao
 from app.models.processo import Processo
 from app.models.usuario import Usuario
 from app.schemas.financeiro import (
+    CobrancaCreate,
+    CobrancaOut,
+    CobrancaUpdate,
     GerarBoletoRequest,
     SimularAcordoRequest,
     TransacaoCreate,
@@ -177,6 +181,102 @@ async def dashboard(
     db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_financeiro)
 ):
     return await svc.dashboard(db)
+
+
+@router.get("/dre")
+async def dre(
+    inicio: date,
+    fim: date,
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_financeiro),
+):
+    return await svc.dre(db, inicio, fim)
+
+
+@router.get("/graficos")
+async def graficos(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_financeiro)
+):
+    return await svc.graficos(db)
+
+
+# ---------- Cobranças programadas ----------
+@router.get("/cobrancas", response_model=list[CobrancaOut])
+async def listar_cobrancas(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_financeiro)
+):
+    linhas = (
+        await db.execute(
+            select(CobrancaProgramada, Cliente.nome)
+            .outerjoin(Cliente, CobrancaProgramada.cliente_id == Cliente.id)
+            .order_by(CobrancaProgramada.ativo.desc(), CobrancaProgramada.proxima_data)
+        )
+    ).all()
+    out = []
+    for cob, nome in linhas:
+        item = CobrancaOut.model_validate(cob)
+        item.cliente_nome = nome
+        out.append(item)
+    return out
+
+
+@router.post("/cobrancas", response_model=CobrancaOut, status_code=status.HTTP_201_CREATED)
+async def criar_cobranca(
+    body: CobrancaCreate,
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_financeiro),
+):
+    hoje = date.today()
+    proxima = body.proxima_data or date(
+        hoje.year, hoje.month, min(body.dia_vencimento, 28)
+    )
+    if proxima < hoje and body.recorrencia == "mensal":
+        proxima = svc._proximo_mes(proxima, body.dia_vencimento)
+    cob = CobrancaProgramada(
+        cliente_id=body.cliente_id, processo_id=body.processo_id, descricao=body.descricao,
+        valor=body.valor, recorrencia=body.recorrencia, dia_vencimento=body.dia_vencimento,
+        proxima_data=proxima, enviar_whatsapp=body.enviar_whatsapp, ativo=body.ativo,
+    )
+    db.add(cob)
+    await db.flush()
+    await db.refresh(cob)
+    return cob
+
+
+@router.put("/cobrancas/{cobranca_id}", response_model=CobrancaOut)
+async def atualizar_cobranca(
+    cobranca_id: int,
+    body: CobrancaUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_financeiro),
+):
+    cob = await db.get(CobrancaProgramada, cobranca_id)
+    if not cob:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cobrança não encontrada")
+    for campo, valor in body.model_dump(exclude_unset=True).items():
+        setattr(cob, campo, valor)
+    await db.flush()
+    await db.refresh(cob)
+    return cob
+
+
+@router.delete("/cobrancas/{cobranca_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remover_cobranca(
+    cobranca_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: Usuario = Depends(acesso_financeiro),
+):
+    cob = await db.get(CobrancaProgramada, cobranca_id)
+    if cob:
+        await db.delete(cob)
+
+
+@router.post("/cobrancas/processar")
+async def processar_cobrancas_agora(
+    db: AsyncSession = Depends(get_db), _: Usuario = Depends(acesso_financeiro)
+):
+    """Processa manualmente as cobranças vencidas (gera boletos agora)."""
+    return await svc.processar_cobrancas(db)
 
 
 @router.get("/dashboard/stream")

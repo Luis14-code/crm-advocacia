@@ -8,7 +8,7 @@ const FONTE_LABEL = {
   publico: { txt: "Usando chave pública padrão do CNJ", cor: "text-gray-600 bg-gray-100" },
 };
 
-function Conteudo() {
+export function ConfiguracoesConteudo() {
   const sens = () => getSensitiveToken();
   const [status, setStatus] = useState(null);
   const [datajudKey, setDatajudKey] = useState("");
@@ -242,7 +242,7 @@ function Conteudo() {
 export default function Configuracoes() {
   return (
     <SensitiveGate titulo="Configurações (acesso do dono)">
-      <Conteudo />
+      <ConfiguracoesConteudo />
     </SensitiveGate>
   );
 }

@@ -150,6 +150,18 @@ caminhos, do mais simples ao mais completo:
 > **Dashboard em tempo real:** a tela Financeiro já mostra faturamento da semana/mês e
 > inadimplência atualizando sozinha (via streaming), conforme os pagamentos entram.
 
+**Já disponível no Financeiro:** fluxo de caixa diário/projetado, contas a pagar e a
+receber, DRE (resultado do período), categorização, conciliação (OFX + webhook), gráficos
+(faturamento, boletos pagos×pendentes×vencidos, receitas/despesas por categoria) e
+**cobranças programadas** — gere boletos recorrentes por cliente, com aviso automático no
+WhatsApp no vencimento.
+
+**Futuro (dependem de você / integração externa):**
+- **NF-e / NFS-e**: emissão exige certificado digital e credenciamento na prefeitura/SEFAZ.
+- **Pix**: sai pelo mesmo gateway de pagamento (ex.: Asaas) quando a conta estiver ativa.
+- **Integração com o contador**: por ora, exporte o extrato/relatório; integração direta
+  pode ser adicionada depois.
+
 ---
 
 ## Resumo do que você precisa providenciar
