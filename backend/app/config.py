@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1:8b"
     ollama_timeout: int = 120
 
+    # Integrações jurídicas (fallback via .env; o preferencial é a tela de Configurações)
+    datajud_api_key: str = ""
+    jusbrasil_default_token: str = ""
+
     # Whisper (transcrição)
     whisper_model: str = "tiny"       # tiny para dev; medium em produção
     whisper_device: str = "cpu"       # cpu | cuda

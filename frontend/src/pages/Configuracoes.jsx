@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { api } from "../lib/api";
+import { api, getSensitiveToken } from "../lib/api";
+import SensitiveGate from "../components/SensitiveGate";
 
 const FONTE_LABEL = {
   db: { txt: "Configurada no sistema", cor: "text-green-700 bg-green-100" },
@@ -7,7 +8,8 @@ const FONTE_LABEL = {
   publico: { txt: "Usando chave pública padrão do CNJ", cor: "text-gray-600 bg-gray-100" },
 };
 
-export default function Configuracoes() {
+function Conteudo() {
+  const sens = () => getSensitiveToken();
   const [status, setStatus] = useState(null);
   const [datajudKey, setDatajudKey] = useState("");
   const [jusbrasil, setJusbrasil] = useState("");
@@ -25,7 +27,7 @@ export default function Configuracoes() {
 
   async function carregar() {
     try {
-      const s = await api("/api/config/integracoes");
+      const s = await api("/api/config/integracoes", { sensitive: sens() });
       setStatus(s);
       setAutoEnvio(s.whatsapp_auto_envio);
       setPagProvedor(s.pagamentos_provedor || "manual");
@@ -52,7 +54,7 @@ export default function Configuracoes() {
       body.pagamentos_provedor = pagProvedor;
       if (pagKey !== "") body.pagamentos_api_key = pagKey;
       if (pagUrl !== "") body.pagamentos_base_url = pagUrl;
-      const novo = await api("/api/config/integracoes", { method: "PUT", body });
+      const novo = await api("/api/config/integracoes", { method: "PUT", body, sensitive: sens() });
       setStatus(novo);
       setDatajudKey("");
       setJusbrasil("");
@@ -76,6 +78,7 @@ export default function Configuracoes() {
       const r = await api("/api/config/integracoes/testar-datajud", {
         method: "POST",
         body: datajudKey ? { api_key: datajudKey } : {},
+        sensitive: sens(),
       });
       setTeste(r);
     } catch (e) {
@@ -233,5 +236,13 @@ export default function Configuracoes() {
         {salvando ? "Salvando..." : "Salvar"}
       </button>
     </div>
+  );
+}
+
+export default function Configuracoes() {
+  return (
+    <SensitiveGate titulo="Configurações (acesso do dono)">
+      <Conteudo />
+    </SensitiveGate>
   );
 }

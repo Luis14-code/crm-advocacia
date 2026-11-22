@@ -50,3 +50,5 @@ class ProcessoOut(ProcessoBase):
     resumo_ia: str | None = None
     created_at: datetime
     updated_at: datetime
+    # Data-limite útil do próximo prazo pendente (para indicar urgência na lista)
+    proximo_prazo_util: date | None = None

@@ -67,7 +67,11 @@ export default function Prazos() {
                     </span>
                     <span className={`text-xs font-medium ${c.txt}`}>{c.tag}</span>
                   </div>
-                  <p className="text-sm text-gray-600">{p.descricao}</p>
+                  <p className="text-sm text-gray-700">{p.descricao}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    ⚖️ {p.processo_numero || "—"}
+                    {p.cliente_nome ? ` · 👤 ${p.cliente_nome}` : ""}
+                  </p>
                 </div>
                 <button
                   onClick={() => cumprir(p.id)}

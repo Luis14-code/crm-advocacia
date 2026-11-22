@@ -36,10 +36,10 @@ export default function Dashboard() {
   }, []);
 
   const cards = [
-    { label: "Processos ativos", valor: processos.length, cor: "bg-claudio" },
-    { label: "Urgentes hoje", valor: briefing?.urgente?.length ?? "—", cor: "bg-red-600" },
-    { label: "Em atenção", valor: briefing?.atencao?.length ?? "—", cor: "bg-yellow-500" },
-    { label: "Perfil", valor: user?.perfil, cor: "bg-claudio-light" },
+    { label: "Processos ativos", valor: processos.length, cor: "bg-claudio", icone: "⚖️" },
+    { label: "Urgentes hoje", valor: briefing?.urgente?.length ?? "—", cor: "bg-red-600", icone: "🔴" },
+    { label: "Em atenção", valor: briefing?.atencao?.length ?? "—", cor: "bg-yellow-500", icone: "🟡" },
+    { label: "Acompanhamento", valor: briefing?.acompanhamento?.length ?? "—", cor: "bg-green-600", icone: "🟢" },
   ];
 
   return (
@@ -55,9 +55,12 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {cards.map((c) => (
-          <div key={c.label} className={`${c.cor} text-white rounded-xl p-5`}>
-            <p className="text-sm text-white/80">{c.label}</p>
-            <p className="text-3xl font-bold mt-1 capitalize">{c.valor}</p>
+          <div key={c.label} className={`${c.cor} text-white rounded-xl p-5 flex items-center justify-between`}>
+            <div>
+              <p className="text-sm text-white/80">{c.label}</p>
+              <p className="text-3xl font-bold mt-1 capitalize">{c.valor}</p>
+            </div>
+            <span className="text-2xl opacity-80">{c.icone}</span>
           </div>
         ))}
       </div>

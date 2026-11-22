@@ -40,13 +40,18 @@ def transcrever_audio(caminho: str) -> dict:
 async def resumir_e_extrair(transcricao: str) -> dict:
     """Gera resumo + fatos para petição + pendências. Usa LLM, com fallback heurístico."""
     system = (
-        "Você é um assistente jurídico. A partir da transcrição de uma reunião entre "
-        "advogado e cliente, responda em JSON com as chaves: 'resumo' (string), "
-        "'fatos_peticao' (lista de strings — fatos relevantes para a petição), "
-        "'pendencias' (lista de strings — documentos/providências a solicitar). "
-        "Responda APENAS o JSON."
+        "Você é o Cláudio, assistente jurídico de um escritório de advocacia. A partir da "
+        "transcrição de uma reunião entre advogado e cliente, monte um RELATÓRIO útil para o "
+        "caso. Responda APENAS em JSON com as chaves: "
+        "'resumo' (string — relatório claro em 1-2 parágrafos, destacando os PONTOS CRUCIAIS "
+        "e juridicamente relevantes para a advocacia: o que o cliente busca, fatos centrais, "
+        "riscos e próximos passos recomendados), "
+        "'fatos_peticao' (lista de strings — fatos objetivos e datados que servem de base para "
+        "a petição), "
+        "'pendencias' (lista de strings — documentos a solicitar e providências a tomar). "
+        "Seja objetivo e técnico, sem inventar fatos que não estejam na transcrição."
     )
-    prompt = f"Transcrição:\n{transcricao[:6000]}\n\nJSON:"
+    prompt = f"Transcrição da reunião:\n{transcricao[:6000]}\n\nRelatório em JSON:"
     try:
         bruto = await gerar(prompt, system=system, temperatura=0.1)
         inicio = bruto.index("{")

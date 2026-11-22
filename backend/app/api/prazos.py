@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
+from app.models.cliente import Cliente
 from app.models.enums import Perfil
 from app.models.prazo import Prazo
 from app.models.processo import Processo
@@ -23,13 +24,25 @@ async def listar(
     db: AsyncSession = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ):
-    stmt = select(Prazo).join(Processo, Prazo.processo_id == Processo.id)
+    stmt = (
+        select(Prazo, Processo.numero, Cliente.nome)
+        .join(Processo, Prazo.processo_id == Processo.id)
+        .outerjoin(Cliente, Processo.cliente_id == Cliente.id)
+    )
     if user.perfil in (Perfil.advogado.value, Perfil.estagiario.value):
         stmt = stmt.where(Processo.advogado_id == user.id)
     if status_:
         stmt = stmt.where(Prazo.status == status_)
     stmt = stmt.order_by(Prazo.data_limite_util)
-    return (await db.execute(stmt)).scalars().all()
+
+    linhas = (await db.execute(stmt)).all()
+    resultado = []
+    for prazo, numero, cliente_nome in linhas:
+        out = PrazoOut.model_validate(prazo)
+        out.processo_numero = numero
+        out.cliente_nome = cliente_nome
+        resultado.append(out)
+    return resultado
 
 
 @router.post("", response_model=PrazoOut, status_code=status.HTTP_201_CREATED)

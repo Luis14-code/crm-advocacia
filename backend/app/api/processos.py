@@ -1,11 +1,12 @@
 """CRUD de processos com filtro de escopo por perfil."""
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_roles
 from app.database import get_db
 from app.models.enums import Perfil
+from app.models.prazo import Prazo
 from app.models.processo import Processo
 from app.models.usuario import Usuario
 from app.schemas.processo import ProcessoCreate, ProcessoOut, ProcessoUpdate
@@ -41,8 +42,26 @@ async def listar(
     if busca:
         termo = f"%{busca}%"
         stmt = stmt.where(Processo.numero.ilike(termo) | Processo.tese_principal.ilike(termo))
-    stmt = stmt.order_by(Processo.updated_at.desc()).limit(limit).offset(offset)
-    return (await db.execute(stmt)).scalars().all()
+
+    proximo = (
+        select(func.min(Prazo.data_limite_util))
+        .where(Prazo.processo_id == Processo.id, Prazo.status == "pendente")
+        .scalar_subquery()
+    )
+    stmt = (
+        stmt.add_columns(proximo.label("proximo"))
+        .order_by(Processo.updated_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+
+    linhas = (await db.execute(stmt)).all()
+    resultado = []
+    for processo, proximo_prazo in linhas:
+        out = ProcessoOut.model_validate(processo)
+        out.proximo_prazo_util = proximo_prazo
+        resultado.append(out)
+    return resultado
 
 
 @router.get("/{processo_id}", response_model=ProcessoOut)

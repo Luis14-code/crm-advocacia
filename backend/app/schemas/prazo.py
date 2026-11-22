@@ -29,3 +29,6 @@ class PrazoOut(BaseModel):
     data_limite_util: date
     status: str
     created_at: datetime
+    # Enriquecidos na listagem (processo e cliente a que o prazo se refere)
+    processo_numero: str | None = None
+    cliente_nome: str | None = None

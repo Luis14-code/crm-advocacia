@@ -15,6 +15,18 @@ const CORES = {
   arquivado: "bg-yellow-100 text-yellow-700",
 };
 
+function urgencia(dataUtil) {
+  if (!dataUtil) return null;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((new Date(dataUtil + "T00:00:00") - hoje) / 86400000);
+  const data = new Date(dataUtil + "T00:00:00").toLocaleDateString("pt-BR");
+  if (dias < 0) return { cor: "bg-red-500", txt: "text-red-700", label: `atrasado (${data})` };
+  if (dias === 0) return { cor: "bg-red-500", txt: "text-red-700", label: `vence hoje` };
+  if (dias <= 3) return { cor: "bg-yellow-400", txt: "text-yellow-700", label: `${data} (${dias}d)` };
+  return { cor: "bg-green-500", txt: "text-green-600", label: `${data} (${dias}d)` };
+}
+
 export default function Processos() {
   const [processos, setProcessos] = useState([]);
   const [busca, setBusca] = useState("");
@@ -76,7 +88,7 @@ export default function Processos() {
             <tr>
               <th className="px-4 py-2 font-medium">Número</th>
               <th className="px-4 py-2 font-medium">Tipo</th>
-              <th className="px-4 py-2 font-medium">Vara</th>
+              <th className="px-4 py-2 font-medium">Próximo prazo</th>
               <th className="px-4 py-2 font-medium">Status</th>
             </tr>
           </thead>
@@ -105,7 +117,19 @@ export default function Processos() {
                     {p.tipo}
                     {p.subtipo ? ` / ${p.subtipo}` : ""}
                   </td>
-                  <td className="px-4 py-2 text-gray-500">{p.vara || "—"}</td>
+                  <td className="px-4 py-2">
+                    {(() => {
+                      const u = urgencia(p.proximo_prazo_util);
+                      return u ? (
+                        <span className={`inline-flex items-center gap-1.5 ${u.txt}`}>
+                          <span className={`w-2 h-2 rounded-full ${u.cor}`} />
+                          {u.label}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      );
+                    })()}
+                  </td>
                   <td className="px-4 py-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs ${CORES[p.status] || ""}`}>
                       {p.status}

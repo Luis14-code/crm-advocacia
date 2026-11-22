@@ -1,8 +1,8 @@
-"""Configurações de integrações do escritório (acesso do sócio)."""
-from fastapi import APIRouter, Depends
+"""Configurações de integrações do escritório (exclusivo do dono: sócio + senha sensível)."""
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_roles
+from app.api.deps import require_sensitive
 from app.database import get_db
 from app.integrations import datajud
 from app.models.enums import Perfil
@@ -17,7 +17,12 @@ from app.services import configuracoes as cfg
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
-_socio = require_roles(Perfil.socio)
+
+async def _socio(user: Usuario = Depends(require_sensitive)) -> Usuario:
+    """Exige senha sensível (do dono) + perfil sócio."""
+    if user.perfil != Perfil.socio.value:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Configurações são exclusivas do dono")
+    return user
 
 
 async def _montar_status(db: AsyncSession) -> IntegracoesStatus:
