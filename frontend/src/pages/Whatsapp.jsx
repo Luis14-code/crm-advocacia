@@ -6,6 +6,7 @@ export default function Whatsapp() {
   const user = useAuth((s) => s.user);
   const [status, setStatus] = useState(null);
   const [qr, setQr] = useState(null);
+  const [pareando, setPareando] = useState(false);
   const [pendentes, setPendentes] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -35,14 +36,42 @@ export default function Whatsapp() {
 
   async function conectar() {
     setMsg(null);
+    setQr(null);
     try {
       await api("/api/whatsapp/conectar", { method: "POST" });
-      const r = await api("/api/whatsapp/qr");
-      setQr(r.base64);
+      setPareando(true);
+      try {
+        const r = await api("/api/whatsapp/qr");
+        if (r.base64) setQr(r.base64);
+      } catch {
+        /* QR pode levar 1-2s; o poll abaixo pega */
+      }
     } catch (e) {
       setMsg(e.message);
     }
   }
+
+  // Enquanto pareia: o QR do WhatsApp expira em segundos, então renova sozinho até conectar.
+  useEffect(() => {
+    if (!pareando) return;
+    const t = setInterval(async () => {
+      try {
+        const s = await api("/api/whatsapp/status");
+        setStatus(s);
+        if (s.conectado) {
+          setPareando(false);
+          setQr(null);
+          setMsg("✓ WhatsApp conectado!");
+          return;
+        }
+        const r = await api("/api/whatsapp/qr");
+        if (r.base64) setQr(r.base64);
+      } catch {
+        /* ignora falhas transitórias do QR */
+      }
+    }, 4000);
+    return () => clearInterval(t);
+  }, [pareando]);
 
   async function aprovar(id) {
     await api(`/api/whatsapp/${id}/aprovar`, { method: "POST" });

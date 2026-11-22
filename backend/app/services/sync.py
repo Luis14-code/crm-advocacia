@@ -113,7 +113,8 @@ async def sincronizar_processo(
 
     movimentacoes = datajud.extrair_movimentacoes(source)
     novas, prazos_criados = await _ingerir_movimentacoes(
-        db, processo, movimentacoes, fonte="datajud", criar_notificacoes=criar_notificacoes
+        db, processo, movimentacoes, fonte="datajud",
+        criar_notificacoes=criar_notificacoes, disparar_cliente=True,
     )
 
     resultado["novas"] = novas
@@ -127,16 +128,19 @@ async def _ingerir_movimentacoes(
     movimentacoes: list[dict],
     fonte: str,
     criar_notificacoes: bool = True,
+    disparar_cliente: bool = True,
 ) -> tuple[int, int]:
     """Pipeline único de ingestão de andamentos (DataJud e JusBrasil).
 
     Para cada movimentação NOVA (dedup por data+descrição):
       - grava a movimentação;
       - avisa o advogado (notificação);
-      - detecta prazo a partir de movimentação-gatilho (intimação, sentença…);
-    e, ao final, se houve novidade, dispara a mensagem automática ao cliente no
-    WhatsApp (a IA traduz o andamento). Assim, QUALQUER fonte de andamento produz
-    os mesmos efeitos. Retorna (novas, prazos_criados).
+      - detecta prazo a partir de movimentação-gatilho (intimação, sentença…).
+
+    Se `disparar_cliente` (padrão), ao final, havendo novidade, dispara a mensagem
+    automática ao cliente no WhatsApp. A varredura do JusBrasil usa False: as
+    mensagens de cliente saem pela PRÉ-APROVAÇÃO da Análise do dia, não sozinhas.
+    Retorna (novas, prazos_criados).
     """
     existentes = await _chaves_existentes(db, processo.id)
     novas = 0
@@ -192,7 +196,7 @@ async def _ingerir_movimentacoes(
 
     # Gatilho WhatsApp: ao detectar movimentação nova, a IA gera uma mensagem amigável
     # e, se o auto-envio estiver ligado (padrão), envia direto (sem pré-aprovação).
-    if novas and processo.cliente_id and ultima_nova_desc:
+    if disparar_cliente and novas and processo.cliente_id and ultima_nova_desc:
         from app.models.cliente import Cliente
         from app.services import whatsapp as wsvc
 
@@ -208,17 +212,22 @@ async def _ingerir_movimentacoes(
 
 
 async def sincronizar_movimentacoes_externas(
-    db: AsyncSession, processo: Processo, movimentacoes: list[dict], fonte: str = "jusbrasil"
+    db: AsyncSession,
+    processo: Processo,
+    movimentacoes: list[dict],
+    fonte: str = "jusbrasil",
+    disparar_cliente: bool = False,
 ) -> dict:
-    """Upsert de movimentações de fonte externa (userscript JusBrasil).
+    """Upsert de movimentações de fonte externa (varredura JusBrasil no navegador).
 
-    Passa pelo MESMO pipeline do DataJud (_ingerir_movimentacoes): detecta prazos,
-    avisa o advogado e dispara a mensagem automática ao cliente. As movimentações
-    são ordenadas por data (mais recente primeiro) para que o aviso ao cliente use
-    o andamento mais novo.
+    Passa pelo MESMO pipeline do DataJud (_ingerir_movimentacoes): grava, detecta
+    prazos e avisa o advogado. Por padrão NÃO dispara mensagem ao cliente — essas
+    saem pela pré-aprovação da Análise do dia. As movimentações são ordenadas por
+    data (mais recente primeiro).
     """
     movimentacoes = sorted(movimentacoes, key=lambda m: m.get("data") or "", reverse=True)
     novas, prazos = await _ingerir_movimentacoes(
-        db, processo, movimentacoes, fonte=fonte, criar_notificacoes=True
+        db, processo, movimentacoes, fonte=fonte,
+        criar_notificacoes=True, disparar_cliente=disparar_cliente,
     )
     return {"processo": processo.numero, "novas": novas, "prazos": prazos, "fonte": fonte}
