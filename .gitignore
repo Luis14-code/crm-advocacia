@@ -34,3 +34,8 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Celery beat (runtime)
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
