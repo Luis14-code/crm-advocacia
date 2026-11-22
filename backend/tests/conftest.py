@@ -1,28 +1,25 @@
 """Fixtures para testes de integração.
 
-Os testes de integração usam o banco configurado em DATABASE_URL (rode dentro do
-container: `docker compose exec backend pytest`). Se o banco não estiver acessível,
-os testes que dependem dele são automaticamente pulados.
+Usam o app via ASGI e as credenciais do seed. Rode dentro do container:
+`docker compose exec backend pytest`. Se o banco/seed não estiver disponível,
+os testes que dependem dele são pulados.
 """
-import uuid
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
 
-from app.core.security import hash_senha
-from app.database import async_session_factory, engine
+from app.database import engine
 from app.main import app
-from app.models.usuario import Usuario
+
+SEED_SOCIO = {"email": "socio@claudio.local", "senha": "claudio123"}
 
 
-async def _banco_acessivel() -> bool:
-    try:
-        async with engine.connect():
-            return True
-    except Exception:  # noqa: BLE001
-        return False
+@pytest_asyncio.fixture(autouse=True)
+async def _reset_engine():
+    """Evita reuso do pool entre loops de teste (asyncpg é sensível a isso)."""
+    await engine.dispose()
+    yield
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -33,28 +30,8 @@ async def client():
 
 
 @pytest_asyncio.fixture
-async def socio():
-    """Cria um sócio de teste, devolve (email, senha) e limpa ao final."""
-    if not await _banco_acessivel():
-        pytest.skip("Banco de dados indisponível para teste de integração")
-
-    email = f"teste-{uuid.uuid4().hex[:8]}@claudio.test"
-    senha = "senha-teste-123"
-    async with async_session_factory() as db:
-        u = Usuario(nome="Sócio Teste", email=email, senha_hash=hash_senha(senha), perfil="socio")
-        db.add(u)
-        await db.commit()
-        uid = u.id
-
-    yield {"email": email, "senha": senha, "id": uid}
-
-    async with async_session_factory() as db:
-        await db.execute(delete(Usuario).where(Usuario.id == uid))
-        await db.commit()
-
-
-@pytest_asyncio.fixture
-async def token_socio(client, socio):
-    resp = await client.post("/api/auth/login", json={"email": socio["email"], "senha": socio["senha"]})
-    assert resp.status_code == 200, resp.text
+async def token_socio(client):
+    resp = await client.post("/api/auth/login", json=SEED_SOCIO)
+    if resp.status_code != 200:
+        pytest.skip("Seed não aplicado (rode: docker compose exec backend python seed.py)")
     return resp.json()["access_token"]

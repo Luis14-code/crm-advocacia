@@ -1,13 +1,13 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import Perfil
 
 
 class UsuarioBase(BaseModel):
     nome: str
-    email: EmailStr
+    email: str  # str (não EmailStr) para aceitar domínios de dev/seed (.local)
     perfil: Perfil
     oab: str | None = None
     ativo: bool = True
@@ -19,7 +19,7 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioUpdate(BaseModel):
     nome: str | None = None
-    email: EmailStr | None = None
+    email: str | None = None
     perfil: Perfil | None = None
     oab: str | None = None
     ativo: bool | None = None

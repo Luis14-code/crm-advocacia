@@ -1,10 +1,12 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.schemas.usuario import UsuarioOut
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # 'str' e não EmailStr: o login apenas busca o e-mail cadastrado (EmailStr
+    # rejeitaria domínios especiais como .local/.test usados em dev/seed).
+    email: str
     senha: str
 
 

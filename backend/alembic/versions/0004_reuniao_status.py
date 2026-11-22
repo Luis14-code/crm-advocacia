@@ -16,11 +16,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "reunioes",
-        sa.Column("status", sa.String(length=20), nullable=False, server_default="pendente"),
+    # IF NOT EXISTS: a migração 0001 (create_all) já pode ter criado a coluna,
+    # pois reflete os modelos atuais. Mantém a migração idempotente.
+    op.execute(
+        "ALTER TABLE reunioes ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pendente'"
     )
 
 
 def downgrade() -> None:
-    op.drop_column("reunioes", "status")
+    op.execute("ALTER TABLE reunioes DROP COLUMN IF EXISTS status")

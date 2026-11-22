@@ -16,8 +16,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("prazos", sa.Column("data_conclusao", sa.Date(), nullable=True))
+    # IF NOT EXISTS: a migração 0001 (create_all) já pode ter criado a coluna.
+    op.execute("ALTER TABLE prazos ADD COLUMN IF NOT EXISTS data_conclusao DATE")
 
 
 def downgrade() -> None:
-    op.drop_column("prazos", "data_conclusao")
+    op.execute("ALTER TABLE prazos DROP COLUMN IF EXISTS data_conclusao")

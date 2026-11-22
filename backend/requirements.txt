@@ -23,7 +23,7 @@ cryptography==44.0.0
 
 # --- Fila / cache ---
 celery==5.4.0
-redis==5.2.1
+redis>=6.1.0,<7   # kombu (Celery 5.4) exige redis-py >= 6.1.0
 
 # --- HTTP client (integrações) ---
 httpx==0.28.1
