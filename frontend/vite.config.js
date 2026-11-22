@@ -6,5 +6,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Docker + Windows: inotify não cruza o bind mount, então usa polling para o HMR.
+    watch: { usePolling: true, interval: 300 },
   },
 });
