@@ -6,6 +6,7 @@ import Notificacoes from "./Notificacoes";
 
 const MENU = [
   { to: "/", label: "Dashboard", icon: "📊", perfis: ["socio", "advogado", "estagiario", "financeiro"] },
+  { to: "/clientes", label: "Clientes", icon: "👥", perfis: ["socio", "advogado", "estagiario", "financeiro"] },
   { to: "/processos", label: "Processos", icon: "⚖️", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/prazos", label: "Prazos", icon: "⏰", perfis: ["socio", "advogado", "estagiario"] },
   { to: "/reunioes", label: "Reuniões", icon: "🎙️", perfis: ["socio", "advogado", "estagiario"] },

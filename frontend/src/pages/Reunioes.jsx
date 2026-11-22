@@ -78,6 +78,10 @@ export default function Reunioes() {
   async function iniciarGravacao() {
     setMsg(null);
     setBlobGravado(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMsg("Gravação indisponível neste navegador. Abra o sistema no Chrome (em http://localhost:5173) para gravar.");
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const rec = new MediaRecorder(stream);
@@ -93,8 +97,15 @@ export default function Reunioes() {
       setGravando(true);
       setSegundos(0);
       timerRef.current = setInterval(() => setSegundos((s) => s + 1), 1000);
-    } catch {
-      setMsg("Não consegui acessar o microfone. Permita o acesso no navegador.");
+    } catch (err) {
+      const nome = err?.name || "";
+      if (nome === "NotAllowedError") {
+        setMsg("Acesso ao microfone negado. Clique no cadeado da barra de endereço e permita o microfone.");
+      } else if (nome === "NotFoundError") {
+        setMsg("Nenhum microfone encontrado. Conecte um microfone e abra o sistema no seu Chrome (http://localhost:5173).");
+      } else {
+        setMsg("Não consegui acessar o microfone. Use o Chrome em http://localhost:5173 e permita o acesso.");
+      }
     }
   }
 

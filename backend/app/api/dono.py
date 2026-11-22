@@ -50,7 +50,7 @@ async def relatorio(
     db: AsyncSession = Depends(get_db),
     _: Usuario = Depends(acesso_dono),
 ):
-    return await jurimetria.relatorio_advogado(db, advogado_id)
+    return await jurimetria.relatorio_detalhado(db, advogado_id)
 
 
 @router.get("/meta")

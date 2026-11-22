@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Processos from "./pages/Processos";
 import ProcessoDetalhe from "./pages/ProcessoDetalhe";
+import Clientes from "./pages/Clientes";
 import Prazos from "./pages/Prazos";
 import Reunioes from "./pages/Reunioes";
 import ReuniaoDetalhe from "./pages/ReuniaoDetalhe";
@@ -33,6 +34,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="clientes" element={<Clientes />} />
         <Route path="processos" element={<Processos />} />
         <Route path="processos/:id" element={<ProcessoDetalhe />} />
         <Route path="prazos" element={<Prazos />} />

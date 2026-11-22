@@ -172,10 +172,112 @@ function Metas({ sens }) {
   );
 }
 
+function Colaboradores({ sens }) {
+  const [lista, setLista] = useState([]);
+  const [sel, setSel] = useState(null);
+  const [det, setDet] = useState(null);
+
+  useEffect(() => {
+    api("/api/dono/advogados", { sensitive: sens() }).then(setLista).catch(() => {});
+  }, [sens]);
+
+  async function abrir(id) {
+    setSel(id);
+    setDet(null);
+    setDet(await api(`/api/dono/advogado/${id}`, { sensitive: sens() }).catch(() => null));
+  }
+
+  const Kpi = ({ label, valor, cor = "text-gray-800" }) => (
+    <div className="bg-gray-50 rounded-lg p-3">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className={`text-xl font-bold ${cor}`}>{valor}</p>
+    </div>
+  );
+
+  return (
+    <div className="grid md:grid-cols-3 gap-6">
+      {/* Lista de colaboradores */}
+      <div className="bg-white rounded-xl border p-3 h-fit">
+        <h2 className="font-semibold text-gray-700 text-sm px-2 mb-2">Colaboradores</h2>
+        <ul className="space-y-1">
+          {lista.map((a) => (
+            <li key={a.advogado_id}>
+              <button onClick={() => abrir(a.advogado_id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm ${sel === a.advogado_id ? "bg-claudio text-white" : "hover:bg-gray-100"}`}>
+                <span className="block font-medium">{a.nome}</span>
+                <span className={`text-xs ${sel === a.advogado_id ? "text-white/70" : "text-gray-400"}`}>
+                  {a.ativos} ativos · êxito {a.taxa_exito != null ? `${a.taxa_exito}%` : "—"}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Detalhe do colaborador */}
+      <div className="md:col-span-2">
+        {!det ? (
+          <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
+            Selecione um colaborador para ver o desempenho.
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border p-5">
+            <h2 className="text-lg font-bold text-gray-800 mb-1">{det.nome}</h2>
+            <p className="text-xs text-gray-400 mb-4 capitalize">
+              {det.perfil} · última atividade: {det.ultima_atividade ? new Date(det.ultima_atividade).toLocaleString("pt-BR") : "—"}
+            </p>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+              <Kpi label="Processos ativos" valor={det.ativos} />
+              <Kpi label="Encerrados" valor={det.encerrados} />
+              <Kpi label="Taxa de êxito" valor={det.taxa_exito != null ? `${det.taxa_exito}%` : "—"} cor="text-claudio" />
+              <Kpi label="Peças (total)" valor={det.pecas_produzidas} />
+              <Kpi label="Prazos atrasados" valor={det.prazos_atrasados} cor={det.prazos_atrasados > 0 ? "text-red-600" : "text-green-700"} />
+              <Kpi label="Prazos pendentes" valor={det.prazos_pendentes} />
+              <Kpi label="Cumpridos / perdidos" valor={`${det.prazos_cumpridos}/${det.prazos_perdidos}`} />
+              <Kpi label="Dias ativos (mês)" valor={det.dias_ativos_mes} />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Nesta semana</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Prazos cumpridos</span><span className="font-medium">{det.prazos_cumpridos_semana}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Peças produzidas</span><span className="font-medium">{det.pecas_semana}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Ações no sistema</span><span className="font-medium">{det.atividade_semana}</span></div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Neste mês</h3>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Prazos cumpridos</span><span className="font-medium">{det.prazos_cumpridos_mes}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Peças produzidas</span><span className="font-medium">{det.pecas_mes}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Ações no sistema</span><span className="font-medium">{det.atividade_mes}</span></div>
+                </div>
+              </div>
+            </div>
+
+            {det.resultados && Object.keys(det.resultados).length > 0 && (
+              <div className="mt-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Resultados (retorno)</h3>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(det.resultados).map(([r, n]) => (
+                    <span key={r} className="text-xs bg-gray-100 rounded-full px-3 py-1 capitalize">{r}: <strong>{n}</strong></span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Conteudo() {
   const sens = () => getSensitiveToken();
   const [aba, setAba] = useState("visao");
-  const ABAS = [["visao", "Visão geral"], ["metas", "Metas"], ["integracoes", "Integrações / API"]];
+  const ABAS = [["visao", "Visão geral"], ["colaboradores", "Colaboradores"], ["metas", "Metas"], ["integracoes", "Integrações / API"]];
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-4">👑 Dashboard do Dono</h1>
@@ -186,6 +288,7 @@ function Conteudo() {
         ))}
       </div>
       {aba === "visao" && <VisaoGeral sens={sens} />}
+      {aba === "colaboradores" && <Colaboradores sens={sens} />}
       {aba === "metas" && <Metas sens={sens} />}
       {aba === "integracoes" && <ConfiguracoesConteudo />}
     </div>
