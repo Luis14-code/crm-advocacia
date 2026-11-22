@@ -33,10 +33,17 @@ def parse_webhook(payload: dict) -> dict | None:
     evento = payload.get("event") or payload.get("evento") or ""
     pagamento = payload.get("payment") or payload.get("pagamento") or payload
 
-    # Só interessa pagamento recebido/confirmado
-    pago = evento in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED") or str(
-        pagamento.get("status", "")
-    ).upper() in ("RECEIVED", "CONFIRMED", "PAID", "PAGO")
+    # Só interessa pagamento recebido/confirmado. Cobre também as variantes "em
+    # dinheiro" (RECEIVED_IN_CASH / PAYMENT_RECEIVED_IN_CASH) usadas para simular
+    # o recebimento no sandbox.
+    evento_up = str(evento).upper()
+    status_up = str(pagamento.get("status", "")).upper()
+    pago = (
+        evento_up.startswith("PAYMENT_RECEIVED")
+        or evento_up.startswith("PAYMENT_CONFIRMED")
+        or status_up.startswith("RECEIVED")
+        or status_up in ("CONFIRMED", "PAID", "PAGO")
+    )
     if not pago:
         return None
 
