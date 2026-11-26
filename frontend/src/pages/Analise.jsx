@@ -100,19 +100,40 @@ export default function Analise() {
         </div>
       )}
 
-      {/* JusBrasil (próximo passo) */}
-      <div className="mb-5 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-        <strong>🔎 Análise aprofundada (JusBrasil):</strong> em construção. A ideia: um botão abre o
-        JusBrasil, <strong>você faz o login manualmente</strong> (sua senha nunca passa pelo sistema) e,
-        a partir daí, o robô faz a varredura dos seus processos e traz os detalhes que o DataJud não
-        entrega para esta mesma análise. Por enquanto, a análise abaixo usa o <strong>DataJud</strong> (oficial, automático).
+      {/* JusBrasil — busca aprofundada (varredura no navegador do advogado) */}
+      <div className="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => window.open("https://www.jusbrasil.com.br/", "_blank", "noopener,noreferrer")}
+            className="bg-amber-600 text-white rounded-lg px-4 py-2 text-sm font-semibold hover:bg-amber-700"
+          >
+            🔎 Buscar no JusBrasil
+          </button>
+          <button
+            onClick={carregar}
+            disabled={carregando}
+            className="border border-amber-400 text-amber-800 rounded-lg px-4 py-2 text-sm font-medium hover:bg-amber-100 disabled:opacity-50"
+          >
+            ↻ Atualizar análise
+          </button>
+          <span className="text-xs text-amber-700">Login manual — sua senha nunca passa pelo sistema.</span>
+        </div>
+        <ol className="mt-3 text-sm text-amber-800 list-decimal list-inside space-y-0.5">
+          <li>Clique em <strong>Buscar no JusBrasil</strong> e faça seu login normalmente.</li>
+          <li>Abra <strong>"Meus processos"</strong> e, no painel do Cláudio (canto inferior da página), clique em <strong>"Varrer meus processos"</strong>.</li>
+          <li>Volte aqui e clique em <strong>"Atualizar análise"</strong> — o que foi encontrado entra automaticamente nos <strong>prazos, processos, dados do cliente e no rascunho de WhatsApp</strong> (só adiciona o que é novo; nada existente é alterado).</li>
+        </ol>
+        <p className="mt-2 text-xs text-amber-600">1ª vez: é preciso instalar o script de varredura no navegador (Tampermonkey). Peça o passo a passo ao Cláudio.</p>
       </div>
 
       {msg && <p className="mb-4 text-sm text-claudio bg-blue-50 rounded-lg px-3 py-2">{msg}</p>}
       {erro && <p className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{erro}</p>}
 
       {carregando ? (
-        <p className="text-gray-400 text-sm">Analisando os processos...</p>
+        <div className="bg-white rounded-xl border p-8 text-center">
+          <p className="text-gray-500 text-sm">Analisando os processos com IA…</p>
+          <p className="text-gray-400 text-xs mt-1">Na primeira vez pode levar até ~1 min (a IA lê cada processo).</p>
+        </div>
       ) : itens.length === 0 ? (
         <div className="bg-white rounded-xl border p-8 text-center text-gray-400">
           Tudo em dia — nenhuma novidade nova desde a última análise.

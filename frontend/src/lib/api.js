@@ -1,5 +1,14 @@
 // Cliente HTTP minimalista com refresh automático de token.
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// API_URL: por padrão usa a MESMA ORIGEM ("") — as chamadas /api e /ws passam pelo
+// proxy do frontend (ver vite.config.js), que repassa ao backend. Assim funciona em
+// localhost e, na rede, sob o mesmo HTTPS (sem CORS nem conteúdo misto). Só usa
+// VITE_API_URL se ela apontar para um host real (ex.: domínio de produção).
+function resolveApiUrl() {
+  const env = import.meta.env.VITE_API_URL;
+  if (env && !/localhost|127\.0\.0\.1/.test(env)) return env;
+  return "";
+}
+const API_URL = resolveApiUrl();
 
 function getTokens() {
   return {
@@ -95,8 +104,13 @@ export async function desbloquearSensivel(senha) {
 
 export function wsUrl() {
   const { access } = getTokens();
-  const base = API_URL.replace(/^http/, "ws");
-  return `${base}/ws/chat?token=${access}`;
+  if (API_URL) {
+    const base = API_URL.replace(/^http/, "ws");
+    return `${base}/ws/chat?token=${access}`;
+  }
+  // Mesma origem (passa pelo proxy do frontend): wss quando a página está em HTTPS.
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}/ws/chat?token=${access}`;
 }
 
 // URL autenticada por token na query (para <audio>/<img> que não mandam header)

@@ -39,9 +39,17 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
+    # Libera também localhost e IPs de rede local (LAN) em qualquer porta, para o
+    # acesso multiusuário de teste (outras máquinas abrindo pelo IP do servidor).
+    allow_origin_regex=(
+        r"^http://(localhost|127\.0\.0\.1"
+        r"|10(\.\d{1,3}){3}"
+        r"|192\.168(\.\d{1,3}){2}"
+        r"|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})(:\d+)?$"
+    ),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "X-Sensitive-Token"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

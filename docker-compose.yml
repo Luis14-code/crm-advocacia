@@ -69,7 +69,7 @@ services:
       - ./backend:/app
       - uploads:/app/uploads
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8000:8000"   # interno; a rede acessa via proxy HTTPS do frontend
     depends_on:
       db:
         condition: service_healthy
@@ -127,7 +127,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "127.0.0.1:5173:5173"
+      - "0.0.0.0:5173:5173"   # exposto na rede local (teste multiusuário)
     command: npm run dev -- --host 0.0.0.0
     profiles: [dev]
 
